@@ -1,0 +1,21 @@
+{
+    "name": "Gamma",
+    "short_name": "Gamma",
+    "description": "Прогресивний веб-додаток",
+    "start_url": "/index.html",
+    "display": "standalone",
+    "background_color": "#009966",
+    "theme_color": "#669966",
+    "icons": [
+      {
+        "src": "/images/icon_192.png",
+        "sizes": "192x192",
+        "type": "image/png"
+      },
+      {
+        "src": "/images/icon_512.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      }
+    ]
+}

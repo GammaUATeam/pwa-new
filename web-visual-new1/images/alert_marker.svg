@@ -1,0 +1,8 @@
+<svg width="250" height="250" xmlns="http://www.w3.org/2000/svg">
+ <g id="alert_marker">
+  <title>alert</title>
+  <path id="svg_3" d="m125.24999,234.20006c-60.63539,0 -109.75006,-49.11467 -109.75006,-109.75006c0,-60.63539 49.11467,-109.75006 109.75006,-109.75006c60.63539,0 109.75006,49.11467 109.75006,109.75006c0,60.63539 -49.11467,109.75006 -109.75006,109.75006z" opacity="undefined" stroke-width="25" stroke="#b70000" fill="#ffffff"/>
+  <text transform="matrix(9.31714 0 0 9.31714 -608.479 -816.733)" stroke="#000" font-weight="normal" xml:space="preserve" text-anchor="start" font-family="'Bitter'" font-size="24" id="svg_1" y="109.31149" x="74.70945" stroke-width="0" fill="#b70000">!</text>
+ </g>
+
+</svg>

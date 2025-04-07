@@ -1,0 +1,84 @@
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap");
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FFFFFF;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #aa0000;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #aa0000;
+  filter: grayscale(100%);
+}
+
+body {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  font-family: "Open Sans", sans-serif;
+  font-weight: 300;
+  font-style: normal;
+}
+body #portConnectScreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #aa0000;
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 1000ms ease-in-out;
+}
+body #portConnectScreen h1 {
+  margin: 0;
+  padding: 0;
+  color: #FFFFFF;
+  word-wrap: break-word;
+  text-align: center;
+  max-width: 70%;
+  cursor: pointer;
+}
+body #osm-map {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 100vw;
+  z-index: 0;
+}
+body #osm-map .leaflet-bottom,
+body #osm-map .leaflet-right {
+  display: none;
+}
+body #alert {
+  position: fixed;
+  right: 15px;
+  bottom: -100%;
+  padding: 5px 5%;
+  width: -moz-fit-content;
+  width: fit-content;
+  height: 50px;
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background-color: #aa0000;
+  color: #FFFFFF;
+  cursor: pointer;
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+  transition: all 250ms ease-in-out;
+}/*# sourceMappingURL=style.css.map */
+
+
+
