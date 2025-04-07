@@ -1,1 +1,0 @@
-# PWA working with tiles
