@@ -71,7 +71,6 @@ self.addEventListener("activate", event => {
                 if (self.clients && typeof self.clients.claim === 'function') {
                     self.clients.claim();
                 }
-                return caches.delete("tiles");
             });
         })
     );

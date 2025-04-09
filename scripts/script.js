@@ -39,25 +39,25 @@ map.setView([49.834956, 24.014456], 14);
 
 // Глобальні іконки маркерів
 var globalMarkerIcon = L.icon({
-    iconUrl: "img/marker.svg",
+    iconUrl: "images/marker.svg",
     iconSize: [25, 25],
     iconAnchor: [12.5, 12.5],
 });
 
 var globalAlertIcon = L.icon({
-    iconUrl: "img/alert_marker.svg",
+    iconUrl: "images/alert_marker.svg",
     iconSize: [25, 25],
     iconAnchor: [12.5, 12.5],
 });
 
 var globalBlueMarkerIcon = L.icon({
-    iconUrl: "img/blue_marker.svg",
+    iconUrl: "images/blue_marker.svg",
     iconSize: [25, 25],
     iconAnchor: [12.5, 12.5],
 });
 
 var globalBlueAlertIcon = L.icon({
-    iconUrl: "img/blue_alert_marker.svg",
+    iconUrl: "images/blue_alert_marker.svg",
     iconSize: [25, 25],
     iconAnchor: [12.5, 12.5],
 });
