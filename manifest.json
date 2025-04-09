@@ -2,7 +2,7 @@
     "name": "Gamma",
     "short_name": "Gamma",
     "description": "Прогресивний веб-додаток",
-    "start_url": "/index.html",
+    "start_url": "/pwa-new/index.html",
     "display": "standalone",
     "background_color": "#009966",
     "theme_color": "#669966",
