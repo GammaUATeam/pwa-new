@@ -81,9 +81,42 @@ function connectDevice() {
     document.getElementById("portConnectScreen").addEventListener("click", async () => {
         document.getElementById("portConnectScreen").style = "top: 100%;";
         console.log("Port connected");
+        
+        // Показуємо кнопку кешування
+        document.getElementById("showCacheAreaBtn").style.display = "block";
+        
+        //Додаємо event listener для кнопки
+        document.getElementById('showCacheAreaBtn').addEventListener('click', showCachedRectangle);
 
-        getUserData(); // Тепер функція оголошена
+        getUserData();
+        // перенесення мапи на геолокацію
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                position => {
+                    const { latitude, longitude } = position.coords;
+                    map.setView([latitude, longitude], maxAllowedZoom);
+                    
+                    const userIcon = L.icon({
+                        iconUrl: 'images/blue_marker.svg',
+                        iconSize: [15, 15],
+                        iconAnchor: [16, 32],
+                    });
 
+                    L.marker([latitude, longitude], { icon: userIcon })
+                        .addTo(map)
+                        .openPopup();
+                },
+                error => {
+                    console.error("Geolocation in not available:", error);
+                    alert("Cannot get geolocation");
+                }
+            );
+        } else {
+            alert("Browser does not support geolocation!");
+        }
+        
+
+        showCacheInstructionAndEnableDrawing();
         if (testMode) {
             console.log("Starting test mode...");
             startTestMode();
@@ -113,7 +146,53 @@ function connectDevice() {
         }
     });
 }
+let cachedRectangleLayer = null;
+function showCacheInstructionAndEnableDrawing() {
+    const alertElement = document.getElementById("alert");
+    alertElement.style.left = "15px";
+    alertElement.style.right = "";
+    alertElement.style.top = "";
+    alertElement.style.bottom = "15px";
+    alertElement.innerHTML = "Закешуйте територію, намалювавши прямокутник";
 
+    // Ініціалізуємо інструмент малювання тільки прямокутника
+    const drawControlCasche = new L.Control.Draw({
+        draw: {
+            polyline: false,
+            polygon: false,
+            circle: false,
+            marker: false,
+            circlemarker: false,
+            rectangle: {
+                shapeOptions: {
+                    color: 'blue'
+                }
+            }
+        },
+        edit: false
+    });
+
+    map.addControl(drawControlCasche);
+
+    map.once(L.Draw.Event.CREATED, async function (event) {
+        const drawnRectangle = event.layer;
+        const bounds = drawnRectangle.getBounds();
+        cacheBounds = bounds; // Зберігаємо для перегляду!
+        map.removeLayer(drawnRectangle); // Прибираємо прямокутник після малювання
+        map.removeControl(drawControlCasche); // Прибираємо панель малювання
+
+        alertElement.style.top = "-100%";
+        
+        await cacheTiles(bounds); // Кешуємо тайли
+
+        alertElement.innerHTML = "Територію закешовано!";
+        alertElement.style.top = "15px";
+
+        setTimeout(() => {
+            alertElement.style.top = "-100%";
+        }, 3000);
+    });
+}
 // Змінюємо частоту оновлення координат (наприклад, кожні 5 секунд)
 const updateInterval = 5000; // 5 секунд
 
@@ -292,26 +371,6 @@ function isInPolygon(point, polygon) {
     return inside;
 }
 
-// function checkDevicePosition(id, x, y) {
-//     // Перевіряємо, чи задані геозони перед перевіркою позиції
-//     if (userPoligonZones.length === 0) {
-//         console.log("Геозони ще не задані.");
-//         return; // Виходимо з функції, якщо геозони не задані
-//     }
-
-//     let insideAnyZone = false;
-
-//     // Перевіряємо, чи точка знаходиться в одній із зон
-//     userPoligonZones.forEach(zone => {
-//         if (isInPolygon([x, y], zone)) {
-//             insideAnyZone = true;
-//         }
-//     });
-
-//     if (!insideAnyZone) {
-//         alert(`${id} has left the zone!`);
-//     }
-// }
 function checkDevicePosition(id, x, y) {
     let insideAnyZone = false;
 
@@ -338,49 +397,108 @@ function checkDevicePosition(id, x, y) {
 }
 
 
-// мобільні
-var mentorZone = null;
-var isDrawingZone = false;
-var initialPoint = null;
+const db = new Dexie("TileCache");
+    db.version(1).stores({
+    tiles: "key, blob"
+});
+db.open().then(() => {
+    console.log("IndexedDB підключена!");
+}).catch((error) => {
+    console.error("Помилка підключення до IndexedDB:", error);
+});
 
+let drawnRectangle = null;
+let drawControlCasche = null;
+let cacheBounds = null;
 
-function onMentorMarkerClick(e) {
-    initialPoint = e.latlng; 
-    isDrawingZone = true;
+function initializeDrawingTools(map) {
+    drawControlCasche = new L.Control.Draw({
+        draw: {
+            polyline: false,
+            polygon: false,
+            circle: false,
+            marker: false,
+            circlemarker: false,
+            rectangle: {
+                shapeOptions: {
+                    color: 'blue'
+                }
+            }
+        },
+        edit: {
+            featureGroup: new L.FeatureGroup()
+        }
+    });
+    map.addControl(drawControlCasche);
 
-    mentorZone = L.circle(initialPoint, {
-        radius: 0,
-        color: "blue",
-        fillColor: "rgba(0, 0, 255, 0.3)",
-        fillOpacity: 0.5,
-    }).addTo(map);
-
-    console.log("Started drawing zone at:", initialPoint);
+    map.on(L.Draw.Event.CREATED, function (event) {
+        if (drawnRectangle) {
+            map.removeLayer(drawnRectangle);
+        }
+        drawnRectangle = event.layer;
+        drawnRectangle.addTo(map);
+        cacheBounds = drawnRectangle.getBounds();
+        document.getElementById('cacheAreaBtn').disabled = false;
+    });
 }
 
+function getTileUrls(bounds, zoomLevels, tileSize, tileLayerUrl) {
+    const urls = [];
+    zoomLevels.forEach(zoom => {
+        const northWest = map.project(bounds.getNorthWest(), zoom).divideBy(tileSize).floor();
+        const southEast = map.project(bounds.getSouthEast(), zoom).divideBy(tileSize).floor();
 
-map.on("mousemove", function (e) {
-    if (!isDrawingZone || !mentorZone) return;
+        for (let x = northWest.x; x <= southEast.x; x++) {
+            for (let y = northWest.y; y <= southEast.y; y++) {
+                const url = tileLayerUrl
+                    .replace('{z}', zoom)
+                    .replace('{x}', x)
+                    .replace('{y}', y);
+                const key = `${zoom}_${x}_${y}`;
+                urls.push({ url, key });
+            }
+        }
+    });
+    return urls;
+}
 
-    var currentPoint = e.latlng;
-    var radius = map.distance(initialPoint, currentPoint);
+async function cacheTiles(bounds) {
+    const zoomLevels = [13, 14, 15, 16, 17, 18];
+    const tileSize = 256;
+    const tileLayerUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+     const urls = getTileUrls(bounds, zoomLevels, tileSize, tileLayerUrl);
 
-    mentorZone.setRadius(radius);
-    console.log("Current radius:", radius);
-});
+    console.log(`Кешую ${urls.length} тайлів...`);
 
-
-map.on("mouseup", function () {
-    if (isDrawingZone) {
-        isDrawingZone = false;
-        console.log("Finished drawing zone with radius:", mentorZone.getRadius());
+    for (const { url, key } of urls) {
+        try {
+            const response = await fetch(url.replace('{s}', 'a'));
+            const blob = await response.blob();
+            await db.tiles.put({ key, blob });
+        } catch (error) {
+            console.error(`Помилка завантаження тайла ${url}:`, error);
+        }
     }
-});
 
-function isInMobileZone(childCoords) {
-    if (!mentorZone) return true;
-
-    var distance = map.distance(mentorZone.getLatLng(), childCoords);
-    return distance <= mentorZone.getRadius();
+    console.log("Тайли успішно закешовано!");
+}
+function showCachedRectangle() {
+    if (cachedRectangleLayer) {
+        if (map.hasLayer(cachedRectangleLayer)) {
+            map.removeLayer(cachedRectangleLayer); // Ховаємо
+        } else {
+            map.addLayer(cachedRectangleLayer);    // Показуємо
+            map.fitBounds(cacheBounds);            // Зум до зони
+        }
+    } else if (cacheBounds) {
+        cachedRectangleLayer = L.rectangle(cacheBounds, {
+            color: 'blue',
+            weight: 2,
+            fillOpacity: 0.15
+        }).addTo(map);
+        map.fitBounds(cacheBounds);
+    } else {
+        alert('Закешована зона не визначена!');
+    }
 }
 

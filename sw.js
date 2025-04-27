@@ -38,7 +38,6 @@ self.addEventListener("fetch", (event) => {
             })
         );
     } else {
-        // Обробка інших ресурсів
         event.respondWith(
             caches.match(event.request).then(cachedResponse => {
                 if (cachedResponse) {

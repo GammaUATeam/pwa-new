@@ -80,5 +80,7 @@ body #alert {
   transition: all 250ms ease-in-out;
 }/*# sourceMappingURL=style.css.map */
 
-
+#cacheButtons {
+  display: none;
+}
 
