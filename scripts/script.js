@@ -24,7 +24,6 @@ var primeColor = "#aa0000";
 
 var lastMarker = {};
 var lastMarkerObject = {};
-var lastCOMPortValue;
 var dataBuffer = ""; // Буфер для об'єднання неповних пакетів
 
 var maxAllowedZoom = 17;
@@ -76,35 +75,25 @@ function getUserData() {
         name: "Test User"
     };
 }
+const SERVICE_UUID = "a066b5b0-c522-4aa9-b148-8f24f37fcba6";
+const CHARACTERISTIC_UUID = "d792d09f-1d6e-422b-991a-e2933e7d848b";
+let bleDataBuffer = "";
+let mentorId = null;
 
 function connectDevice() {
     document.getElementById("portConnectScreen").addEventListener("click", async () => {
         document.getElementById("portConnectScreen").style = "top: 100%;";
-        console.log("Port connected");
-        
-        // Показуємо кнопку кешування
         document.getElementById("showCacheAreaBtn").style.display = "block";
-        
-        //Додаємо event listener для кнопки
         document.getElementById('showCacheAreaBtn').addEventListener('click', showCachedRectangle);
 
         getUserData();
+
         // перенесення мапи на геолокацію
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 position => {
                     const { latitude, longitude } = position.coords;
                     map.setView([latitude, longitude], maxAllowedZoom);
-                    
-                    const userIcon = L.icon({
-                        iconUrl: 'images/blue_marker.svg',
-                        iconSize: [15, 15],
-                        iconAnchor: [16, 32],
-                    });
-
-                    L.marker([latitude, longitude], { icon: userIcon })
-                        .addTo(map)
-                        .openPopup();
                 },
                 error => {
                     console.error("Geolocation in not available:", error);
@@ -114,38 +103,90 @@ function connectDevice() {
         } else {
             alert("Browser does not support geolocation!");
         }
-        
 
         showCacheInstructionAndEnableDrawing();
+
         if (testMode) {
             console.log("Starting test mode...");
             startTestMode();
         } else {
             try {
-                const port = await navigator.serial.requestPort();
-                await port.open({ baudRate: 9600 });
-
-                const reader = port.readable.getReader();
-                while (true) {
-                    const { value, done } = await reader.read();
-                    if (done) {
-                        console.log("Reader done, releasing lock.");
-                        reader.releaseLock();
-                        break;
-                    }
-
-                    const decoder = new TextDecoder();
-                    dataBuffer += decoder.decode(value);
-
-                    processBufferedData();
-                }
+                await connectBLEDevice();
             } catch (error) {
-                console.error("Serial port error:", error);
-                alert("Failed to connect to serial port. Check console for details.");
+                console.error("BLE connection error:", error);
+                alert("Не вдалося підключитися до BLE пристрою.");
             }
         }
     });
 }
+
+async function connectBLEDevice() {
+    const device = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [SERVICE_UUID] }]
+    });
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE_UUID);
+    const characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+    await characteristic.startNotifications();
+    characteristic.addEventListener('characteristicvaluechanged', handleBLEValueChanged);
+
+    device.addEventListener('gattserverdisconnected', () => {
+        alert('BLE пристрій відключено');
+    });
+
+    console.log("BLE підключено, очікуємо дані...");
+}
+
+function handleBLEValueChanged(event) {
+    const value = event.target.value;
+    const decoder = new TextDecoder('utf-8');
+    const chunk = decoder.decode(value);
+    bleDataBuffer += chunk;
+    processBLEBufferedData();
+}
+
+function processBLEBufferedData() {
+    let start = bleDataBuffer.indexOf('{');
+    let end = bleDataBuffer.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+        const jsonString = bleDataBuffer.substring(start, end + 1);
+        try {
+            const data = JSON.parse(jsonString);
+            processBLEJsonData(data);
+        } catch (e) {
+            console.error('BLE JSON parse error:', e);
+        }
+        bleDataBuffer = bleDataBuffer.slice(end + 1);
+    }
+}
+
+function processBLEJsonData(data) {
+    if (
+        data &&
+        data.from &&
+        data.packet &&
+        data.packet.decoded &&
+        data.packet.decoded.payload
+    ) {
+        const payload = data.packet.decoded.payload;
+        const x = payload.latitude_i / 1e7;
+        const y = payload.longitude_i / 1e7;
+        const id = data.from.toString();
+        const SOS = (payload.position_flags & 0x02) > 0;
+        const currentTime = getCurrentTime();
+
+        // Якщо наставник ще не визначений - запам'ятати перший id
+        if (!mentorId) {
+            mentorId = id;
+            console.log("Визначено ID наставника:", mentorId);
+        }
+
+        callSOS(SOS, currentTime, [x, y], id);
+        drawNewPoint(x, y, currentTime, SOS, id);
+    }
+}
+
 let cachedRectangleLayer = null;
 function showCacheInstructionAndEnableDrawing() {
     const alertElement = document.getElementById("alert");
@@ -298,7 +339,7 @@ function drawNewPoint(x, y, currentTime, SOS, id) {
 
     var newMarker = L.latLng(roundedX, roundedY);
 
-    const isSpecialId = id === "500001";
+    const isSpecialId = id === mentorId;
     const currentMarkerIcon = isSpecialId
         ? (SOS ? globalBlueAlertIcon : globalBlueMarkerIcon)
         : (SOS ? globalAlertIcon : globalMarkerIcon);
