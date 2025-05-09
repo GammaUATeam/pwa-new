@@ -85,10 +85,11 @@ function connectDevice() {
         document.getElementById("portConnectScreen").style = "top: 100%;";
         document.getElementById("showCacheAreaBtn").style.display = "block";
         document.getElementById('showCacheAreaBtn').addEventListener('click', showCachedRectangle);
+        document.getElementById("scanDevices").style.display = "block";
+        document.getElementById('scanDevices').addEventListener('click',  getDeviceInfo);
 
         getUserData();
 
-        // перенесення мапи на геолокацію
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 position => {
@@ -106,86 +107,91 @@ function connectDevice() {
 
         showCacheInstructionAndEnableDrawing();
 
-        if (testMode) {
-            console.log("Starting test mode...");
-            startTestMode();
-        } else {
-            try {
-                await connectBLEDevice();
-            } catch (error) {
-                console.error("BLE connection error:", error);
-                alert("Не вдалося підключитися до BLE пристрою.");
-            }
-        }
+        // if (testMode) {
+        //     console.log("Starting test mode...");
+        //     startTestMode();
+        // } else {
+        //     try {
+        //         await connectBLEDevice();
+        //     } catch (error) {
+        //         console.error("BLE connection error:", error);
+        //         alert("Не вдалося підключитися до BLE пристрою.");
+        //     }
+        // }
     });
 }
-
-async function connectBLEDevice() {
-    const device = await navigator.bluetooth.requestDevice({
-        filters: [{ services: [SERVICE_UUID] }]
-    });
-    const server = await device.gatt.connect();
-    const service = await server.getPrimaryService(SERVICE_UUID);
-    const characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
-
-    await characteristic.startNotifications();
-    characteristic.addEventListener('characteristicvaluechanged', handleBLEValueChanged);
-
-    device.addEventListener('gattserverdisconnected', () => {
-        alert('BLE пристрій відключено');
-    });
-
-    console.log("BLE підключено, очікуємо дані...");
-}
-
-function handleBLEValueChanged(event) {
-    const value = event.target.value;
-    const decoder = new TextDecoder('utf-8');
-    const chunk = decoder.decode(value);
-    bleDataBuffer += chunk;
-    processBLEBufferedData();
-}
-
-function processBLEBufferedData() {
-    let start = bleDataBuffer.indexOf('{');
-    let end = bleDataBuffer.lastIndexOf('}');
-    if (start !== -1 && end !== -1 && end > start) {
-        const jsonString = bleDataBuffer.substring(start, end + 1);
-        try {
-            const data = JSON.parse(jsonString);
-            processBLEJsonData(data);
-        } catch (e) {
-            console.error('BLE JSON parse error:', e);
-        }
-        bleDataBuffer = bleDataBuffer.slice(end + 1);
+function isWebBLEavailable() {
+    if (!navigator.bluetooth) {
+        console.log("Web Bluetooth is not available")
+        return false
     }
+    console.log("Bluetooth is available")
+    return true
+    
 }
 
-function processBLEJsonData(data) {
-    if (
-        data &&
-        data.from &&
-        data.packet &&
-        data.packet.decoded &&
-        data.packet.decoded.payload
-    ) {
-        const payload = data.packet.decoded.payload;
-        const x = payload.latitude_i / 1e7;
-        const y = payload.longitude_i / 1e7;
-        const id = data.from.toString();
-        const SOS = (payload.position_flags & 0x02) > 0;
-        const currentTime = getCurrentTime();
-
-        // Якщо наставник ще не визначений - запам'ятати перший id
-        if (!mentorId) {
-            mentorId = id;
-            console.log("Визначено ID наставника:", mentorId);
-        }
-
-        callSOS(SOS, currentTime, [x, y], id);
-        drawNewPoint(x, y, currentTime, SOS, id);
+function getDeviceInfo() {
+    let options = {
+        acceptAllDevices: true
     }
+
+    console.log("Request BLE device info...")
+    navigator.bluetooth.requestDevice(options).then(device => {
+        console.log("Name: " + device.name)
+    }).catch(error => {
+        console.log("Request device error:" + error)
+    })
 }
+
+
+// function handleBLEValueChanged(event) {
+//     const value = event.target.value;
+//     const decoder = new TextDecoder('utf-8');
+//     const chunk = decoder.decode(value);
+//     bleDataBuffer += chunk;
+//     processBLEBufferedData();
+// }
+
+// function processBLEBufferedData() {
+//     let start = bleDataBuffer.indexOf('{');
+//     let end = bleDataBuffer.lastIndexOf('}');
+//     if (start !== -1 && end !== -1 && end > start) {
+//         const jsonString = bleDataBuffer.substring(start, end + 1);
+//         try {
+//             const data = JSON.parse(jsonString);
+//             processBLEJsonData(data);
+//         } catch (e) {
+//             console.error('BLE JSON parse error:', e);
+//         }
+//         bleDataBuffer = bleDataBuffer.slice(end + 1);
+//     }
+// }
+
+// function processBLEJsonData(data) {
+//     if (
+//         data &&
+//         data.from &&
+//         data.packet &&
+//         data.packet.decoded &&
+//         data.packet.decoded.payload
+//     ) {
+//         const payload = data.packet.decoded.payload;
+//         const x = payload.latitude_i / 1e7;
+//         const y = payload.longitude_i / 1e7;
+//         const id = data.from.toString();
+//         const SOS = (payload.position_flags & 0x02) > 0;
+//         const currentTime = getCurrentTime();
+
+//         // Якщо наставник ще не визначений - запам'ятати перший id
+//         if (!mentorId) {
+//             mentorId = id;
+//             console.log("Визначено ID наставника:", mentorId);
+//         }
+
+//         // callSOS(SOS, currentTime, [x, y], id);
+//         drawNewPoint(x, y, currentTime, SOS, id);
+//     }
+// }
 
 let cachedRectangleLayer = null;
 function showCacheInstructionAndEnableDrawing() {
@@ -263,7 +269,7 @@ function processBufferedData() {
         const parsedData = parseDataString(packet);
         if (parsedData) {
             const { id, x, y, SOS, currentTime } = parsedData;
-            callSOS(SOS, currentTime, [x, y], id);
+            // callSOS(SOS, currentTime, [x, y], id);
             drawNewPoint(x, y, currentTime, SOS, id);
         } else {
             console.log(`Ignored data: ${packet}`);
@@ -308,25 +314,25 @@ function getCurrentTime() {
     );
 }
 
-function callSOS(SOS, time, coords, id) {
-    const alertElement = document.getElementById("alert");
+// function callSOS(SOS, time, coords, id) {
+//     const alertElement = document.getElementById("alert");
 
-    if (SOS) {
-        console.log(`SOS from ${id} at ${time}`);
-        alertElement.style.bottom = "15px"; // Показуємо повідомлення
-        alertElement.innerHTML = `SOS from ${id}!`;
+//     if (SOS) {
+//         console.log(`SOS from ${id} at ${time}`);
+//         alertElement.style.bottom = "15px"; // Показуємо повідомлення
+//         alertElement.innerHTML = `SOS from ${id}!`;
 
-        if (!alertElement.hasClickListener) {
-            alertElement.addEventListener("click", () => {
-                map.flyTo(coords, maxAllowedZoom);
-            });
-            alertElement.hasClickListener = true;
-        }
-    } else {
-        console.log(`SOS deactivated for ${id}`);
-        alertElement.style.bottom = "-100%"; // Приховуємо повідомлення
-    }
-}
+//         if (!alertElement.hasClickListener) {
+//             alertElement.addEventListener("click", () => {
+//                 map.flyTo(coords, maxAllowedZoom);
+//             });
+//             alertElement.hasClickListener = true;
+//         }
+//     } else {
+//         console.log(`SOS deactivated for ${id}`);
+//         alertElement.style.bottom = "-100%"; // Приховуємо повідомлення
+//     }
+// }
 
 function drawNewPoint(x, y, currentTime, SOS, id) {
     console.log(`%c${currentTime} Device: ${id}, ${x}; ${y} - ${SOS ? "SOS" : "No SOS"}`, 'background: #900000; color: #fff');
