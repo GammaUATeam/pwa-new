@@ -75,8 +75,11 @@ function getUserData() {
         name: "Test User"
     };
 }
+
 const SERVICE_UUID = "a066b5b0-c522-4aa9-b148-8f24f37fcba6";
 const CHARACTERISTIC_UUID = "d792d09f-1d6e-422b-991a-e2933e7d848b";
+var bluetoothDeviceDetected
+var gattCharacteristic
 let bleDataBuffer = "";
 let mentorId = null;
 
@@ -85,9 +88,21 @@ function connectDevice() {
         document.getElementById("portConnectScreen").style = "top: 100%;";
         document.getElementById("showCacheAreaBtn").style.display = "block";
         document.getElementById('showCacheAreaBtn').addEventListener('click', showCachedRectangle);
-        document.getElementById("scanDevices").style.display = "block";
-        document.getElementById('scanDevices').addEventListener('click',  getDeviceInfo);
-
+    
+        document.getElementById("read").style.display = "block";
+        document.getElementById("read").addEventListener("click", function() {
+            if (isWebBLEavailable()) { read() }
+        })
+        document.getElementById("start").style.display = "block";
+        document.getElementById("start").addEventListener("click", function(event) {
+            if (isWebBLEavailable()) { start() }
+        })
+        document.getElementById("stop").style.display = "block";
+        document.getElementById("stop").addEventListener("click", function(event) {
+            if (isWebBLEavailable()) { stop() }
+        })
+        
+        
         getUserData();
 
         if (navigator.geolocation) {
@@ -120,6 +135,7 @@ function connectDevice() {
         // }
     });
 }
+
 function isWebBLEavailable() {
     if (!navigator.bluetooth) {
         console.log("Web Bluetooth is not available")
@@ -132,66 +148,127 @@ function isWebBLEavailable() {
 
 function getDeviceInfo() {
     let options = {
-        acceptAllDevices: true
+        acceptAllDevices: true,
+        optionalServices: [SERVICE_UUID]
     }
 
     console.log("Request BLE device info...")
-    navigator.bluetooth.requestDevice(options).then(device => {
+    return navigator.bluetooth.requestDevice(options).then(device => {
         console.log("Name: " + device.name)
+        bluetoothDeviceDetected = device
     }).catch(error => {
         console.log("Request device error:" + error)
     })
 }
 
+function read() {
+    return (bluetoothDeviceDetected ? Promise.resolve() : getDeviceInfo())
+    .then(connectGATT)
+    .then(_ => {
+        console.log("Reading data...")
+        return gattCharacteristic.readValue()
+    })
+    .catch(error => {
+        console.log("Waiting to start reading: " + error)
+    })
+}
 
-// function handleBLEValueChanged(event) {
-//     const value = event.target.value;
-//     const decoder = new TextDecoder('utf-8');
-//     const chunk = decoder.decode(value);
-//     bleDataBuffer += chunk;
-//     processBLEBufferedData();
-// }
+function connectGATT() {
+    if (!bluetoothDeviceDetected.gatt) { // Додати перевірку
+        return Promise.reject("GATT server not available");
+    }
+    if (bluetoothDeviceDetected.gatt.connect && gattCharacteristic) {
+        return Promise.resolve()
+    }
 
-// function processBLEBufferedData() {
-//     let start = bleDataBuffer.indexOf('{');
-//     let end = bleDataBuffer.lastIndexOf('}');
-//     if (start !== -1 && end !== -1 && end > start) {
-//         const jsonString = bleDataBuffer.substring(start, end + 1);
-//         try {
-//             const data = JSON.parse(jsonString);
-//             processBLEJsonData(data);
-//         } catch (e) {
-//             console.error('BLE JSON parse error:', e);
-//         }
-//         bleDataBuffer = bleDataBuffer.slice(end + 1);
-//     }
-// }
+    return bluetoothDeviceDetected.gatt.connect()
+    .then(server => {
+        console.log("Getting GATT Service...")
+        return server.getPrimaryService(SERVICE_UUID)
+    })
+    .then(service => {
+        console.log("Getting GATT Characteristic...")
+        return service.getCharacteristic(CHARACTERISTIC_UUID)
+    })
+    .then(characteristic => {
+        gattCharacteristic = characteristic
+        gattCharacteristic.addEventListener("characteristicvaluechanged", handleChangedValue)
 
-// function processBLEJsonData(data) {
-//     if (
-//         data &&
-//         data.from &&
-//         data.packet &&
-//         data.packet.decoded &&
-//         data.packet.decoded.payload
-//     ) {
-//         const payload = data.packet.decoded.payload;
-//         const x = payload.latitude_i / 1e7;
-//         const y = payload.longitude_i / 1e7;
-//         const id = data.from.toString();
-//         const SOS = (payload.position_flags & 0x02) > 0;
-//         const currentTime = getCurrentTime();
+        document.getElementById("start").disabled = false
+        document.getElementById('stop').disabled = true
+    }) 
+}
 
-//         // Якщо наставник ще не визначений - запам'ятати перший id
-//         if (!mentorId) {
-//             mentorId = id;
-//             console.log("Визначено ID наставника:", mentorId);
-//         }
+function handleChangedValue(event) {
+    let value = event.target.value;
+    const decoder = new TextDecoder('utf-8');
+    const chunk = decoder.decode(value);
+    bleDataBuffer += chunk;
+    processBLEBufferedData();
+}
 
-//         // callSOS(SOS, currentTime, [x, y], id);
-//         drawNewPoint(x, y, currentTime, SOS, id);
-//     }
-// }
+function start() {
+    gattCharacteristic.startNotifications()
+    .then(_ => {
+        console.log("Start reading...")
+        document.getElementById("start").disabled = true
+        document.getElementById('stop').disabled = false
+    })
+    .catch(error => {
+        console.log("[ERROR] Start: " + error)
+    })
+}
+
+function stop() {
+    gattCharacteristic.stopNotifications()
+    .then(_ => {
+        console.log("Stop reading...")
+        document.getElementById("start").disabled = false
+        document.getElementById('stop').disabled = true
+    })
+    .catch(error => {
+        console.log("[ERROR] Stop: " + error)
+    })
+}
+
+
+function processBLEBufferedData() {
+    let start = bleDataBuffer.indexOf('{');
+    let end = bleDataBuffer.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+        const jsonString = bleDataBuffer.substring(start, end + 1);
+        try {
+            const data = JSON.parse(jsonString);
+            processBLEJsonData(data);
+        } catch (e) {
+            console.error('BLE JSON parse error:', e);
+        }
+        bleDataBuffer = bleDataBuffer.slice(end + 1);
+    }
+}
+
+function processBLEJsonData(data) {
+    if (
+        data &&
+         data.from &&
+         data.packet &&
+         data.packet.decoded &&
+         data.packet.decoded.payload
+     ) {
+         const payload = data.packet.decoded.payload;
+         const x = payload.latitude_i / 1e7;
+         const y = payload.longitude_i / 1e7;
+         const id = data.from.toString();
+         const SOS = (payload.position_flags & 0x02) > 0;
+         const currentTime = getCurrentTime();
+         // Якщо наставник ще не визначений - запам'ятати перший id
+         if (!mentorId) {
+             mentorId = id;
+             console.log("Визначено ID наставника:", mentorId);
+         }
+         drawNewPoint(x, y, currentTime, SOS, id);
+     }
+}
 
 let cachedRectangleLayer = null;
 function showCacheInstructionAndEnableDrawing() {
@@ -368,9 +445,9 @@ function drawNewPoint(x, y, currentTime, SOS, id) {
 
     var newMarkerObject = L.marker(newMarker, { icon: currentMarkerIcon });
 
-    if (isSpecialId) {
-        newMarkerObject.on("mousedown", onMentorMarkerClick); // Початок створення зони
-    }
+    // if (isSpecialId) {
+    //     newMarkerObject.on("mousedown", onMentorMarkerClick); // Початок створення зони
+    // }
     newMarkerObject.addTo(map);
 
     lastMarker[id] = newMarker;
@@ -431,7 +508,7 @@ function checkDevicePosition(id, x, y) {
     }
 
     // Перевірка мобільної геозони наставника (перевіряємо, чи зона створена)
-    if (mentorZone && id !== mentorId) {
+    if (id !== mentorId) {
         if (!isInMobileZone({ lat: x, lng: y })) {
             alert(`${id} has left the mobile zone!`);
         }
