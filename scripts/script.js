@@ -311,6 +311,7 @@ function showCacheInstructionAndEnableDrawing() {
 
         alertElement.innerHTML = "Територію закешовано!";
         alertElement.style.top = "15px";
+        alertElement.style.left = "300px";
 
         setTimeout(() => {
             alertElement.style.top = "-100%";
