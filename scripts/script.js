@@ -450,18 +450,24 @@ function drawNewPoint(x, y, currentTime, SOS, id) {
         });
         markerLine.addTo(map);
         map.removeLayer(markerLine);
-        allPolylines[id] = markerLine;
+        if (!allPolylines[id]) allPolylines[id] = [];
+        allPolylines[id].push(markerLine);
         map.removeLayer(lastMarkerObject[id]);
     }
 
     var newMarkerObject = L.marker(newMarker, { icon: currentMarkerIcon });
     newMarkerObject.on("click", function() {
-        const isVisible = map.hasLayer(allPolylines[id]);
-        Object.entries(allPolylines).forEach(([deviceId, line]) => {
-            if (map.hasLayer(line)) map.removeLayer(line);
+        const isVisible = allPolylines[id] && allPolylines[id].length > 0 && map.hasLayer(allPolylines[id][0]);
+        Object.entries(allPolylines).forEach(([deviceId, lines]) => {
+            if (Array.isArray(lines)) {
+                lines.forEach(line => {
+                    if (map.hasLayer(line)) map.removeLayer(line);
+                });
+            }
         });
-        if (!isVisible) {
-            map.addLayer(allPolylines[id]);
+
+        if (!isVisible && allPolylines[id]) {
+            allPolylines[id].forEach(line => map.addLayer(line));
         }
     });
     //     Object.entries(allPolylines).forEach(([deviceId, line]) => {
