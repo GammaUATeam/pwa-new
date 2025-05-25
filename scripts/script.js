@@ -456,7 +456,7 @@ function drawNewPoint(x, y, currentTime, SOS, id) {
 
     var newMarkerObject = L.marker(newMarker, { icon: currentMarkerIcon });
     newMarkerObject.on("click", function() {
-        const isVisible = !map.hasLayer(allPolylines[id]);
+        const isVisible = map.hasLayer(allPolylines[id]);
         Object.entries(allPolylines).forEach(([deviceId, line]) => {
             if (map.hasLayer(line)) map.removeLayer(line);
         });
