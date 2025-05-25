@@ -85,6 +85,13 @@ let mentorId = null;
 
 function connectDevice() {
     document.getElementById("portConnectScreen").addEventListener("click", async () => {
+        Notification.requestPermission().then(perm => {
+            if (perm === "granted") {
+                console.log("Notifications are allowed!")
+            } else {
+                console.log("Permission is denied.")
+            }
+        })
         document.getElementById("portConnectScreen").style = "top: 100%;";
         document.getElementById("showCacheAreaBtn").style.display = "block";
         document.getElementById('showCacheAreaBtn').addEventListener('click', showCachedRectangle);
@@ -412,6 +419,8 @@ function getCurrentTime() {
 //     }
 // }
 
+const allPolylines = {};
+
 function drawNewPoint(x, y, currentTime, SOS, id) {
     console.log(`%c${currentTime} Device: ${id}, ${x}; ${y} - ${SOS ? "SOS" : "No SOS"}`, 'background: #900000; color: #fff');
 
@@ -440,11 +449,22 @@ function drawNewPoint(x, y, currentTime, SOS, id) {
             smoothFactor: 1,
         });
         markerLine.addTo(map);
-
+        allPolylines[id] = markerLine;
         map.removeLayer(lastMarkerObject[id]);
     }
 
     var newMarkerObject = L.marker(newMarker, { icon: currentMarkerIcon });
+    newMarkerObject.on("click", function() {
+        const hideOthers = !map.hasLayer(allPolylines[id]);
+        Object.entries(allPolylines).forEach(([deviceId, line]) => {
+            if (hideOthers) {
+                if (deviceId != id) map.removeLayer(line);
+                else map.addLayer(line);
+            } else {
+                map.addLayer(line);
+            }
+        });
+    });
 
     // if (isSpecialId) {
     //     newMarkerObject.on("mousedown", onMentorMarkerClick); // Початок створення зони
@@ -511,13 +531,21 @@ function checkDevicePosition(id, x, y) {
     // Перевірка мобільної геозони наставника (перевіряємо, чи зона створена)
     if (id !== mentorId) {
         if (!isInMobileZone({ lat: x, lng: y })) {
-            alert(`${id} has left the mobile zone!`);
+            alertElement.innerHTML = `${id} has left the mobile zone!`;
+            alertElement.style.top = "15px";
+            alertElement.style.right = "300px";
         }
     }
 
     // Якщо не в жодній зоні та статичні зони існують, показуємо сповіщення
     if (!insideAnyZone && userPoligonZones.length > 0) {
-        alert(`${id} has left the static polygon zone!`);
+        alertElement.innerHTML = `${id} has left the static polygon zone!`;
+        alertElement.style.top = "15px";
+        alertElement.style.right = "300px";
+        
+        new Notification("Вихід із геозони!", {
+            body: `${id} has left the static polygon zone!`
+        })
     }
 }
 
