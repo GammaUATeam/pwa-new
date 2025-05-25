@@ -449,22 +449,30 @@ function drawNewPoint(x, y, currentTime, SOS, id) {
             smoothFactor: 1,
         });
         markerLine.addTo(map);
+        map.removeLayer(markerLine);
         allPolylines[id] = markerLine;
         map.removeLayer(lastMarkerObject[id]);
     }
 
     var newMarkerObject = L.marker(newMarker, { icon: currentMarkerIcon });
     newMarkerObject.on("click", function() {
-        const hideOthers = !map.hasLayer(allPolylines[id]);
+        const isVisible = !map.hasLayer(allPolylines[id]);
         Object.entries(allPolylines).forEach(([deviceId, line]) => {
-            if (hideOthers) {
-                if (deviceId != id) map.removeLayer(line);
-                else map.addLayer(line);
-            } else {
-                map.addLayer(line);
-            }
+            if (map.hasLayer(line)) map.removeLayer(line);
         });
+        if (!isVisible) {
+            map.addLayer(allPolylines[id]);
+        }
     });
+    //     Object.entries(allPolylines).forEach(([deviceId, line]) => {
+    //         if (hideOthers) {
+    //             if (deviceId != id) map.removeLayer(line);
+    //             else map.addLayer(line);
+    //         } else {
+    //             map.addLayer(line);
+    //         }
+    //     });
+    // });
 
     // if (isSpecialId) {
     //     newMarkerObject.on("mousedown", onMentorMarkerClick); // Початок створення зони
