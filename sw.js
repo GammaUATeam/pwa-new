@@ -74,3 +74,17 @@ self.addEventListener("activate", event => {
         })
     );
 });
+
+self.addEventListener("message", (event) => {
+    const data = event.data;
+
+    if (data && data.type === "delayed-notification") {
+        setTimeout(() => {
+            self.registration.showNotification("Тестове сповіщення", {
+                body: data.message || "Тестове сповіщення",
+                vibrate: [200, 100, 200],
+                tag: "delayed-alert"
+            });
+        }, data.delay || 60000);
+    }
+});

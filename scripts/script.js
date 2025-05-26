@@ -97,9 +97,21 @@ function connectDevice() {
         document.getElementById('showCacheAreaBtn').addEventListener('click', showCachedRectangle);
     
         document.getElementById("read").style.display = "block";
-        document.getElementById("read").addEventListener("click", function() {
-            if (isWebBLEavailable()) { read() }
-        })
+        document.getElementById("read").addEventListener("click", function () {
+            if (isWebBLEavailable()) {
+                read();
+
+                if (navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: "delayed-notification",
+                        message: "Минуло 1 хвилину після запуску зчитування!",
+                        delay: 60000
+                    });
+                } else {
+                    console.log("No active service worker to send message to.");
+                }
+            }
+        });
         document.getElementById("start").style.display = "block";
         document.getElementById("start").addEventListener("click", function(event) {
             if (isWebBLEavailable()) { start() }
