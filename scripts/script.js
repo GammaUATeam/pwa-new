@@ -96,7 +96,7 @@ function connectDevice() {
                     navigator.serviceWorker.controller.postMessage({
                         type: "delayed-notification",
                         message: "Минуло 1 хвилину після запуску зчитування!",
-                        delay: 60000
+                        delay: 2000
                     });
                 } else {
                     console.log("No active service worker to send message to.");

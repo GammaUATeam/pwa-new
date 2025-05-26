@@ -86,6 +86,6 @@ self.addEventListener("message", (event) => {
                 vibrate: [200, 100, 200],
                 tag: "delayed-alert"
             });
-        }, data.delay || 60000);
+        }, data.delay || 2000);
     }
 });
