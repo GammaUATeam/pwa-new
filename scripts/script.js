@@ -95,7 +95,7 @@ function connectDevice() {
         if (navigator.serviceWorker.controller) {
                     navigator.serviceWorker.controller.postMessage({
                         type: "delayed-notification",
-                        message: "Минуло 1 хвилину після запуску зчитування!",
+                        message: "Минуло 2 секунди після запуску зчитування!",
                         delay: 2000
                     });
                 } else {
