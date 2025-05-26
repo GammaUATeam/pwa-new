@@ -92,6 +92,15 @@ function connectDevice() {
                 console.log("Permission is denied.")
             }
         })
+        if (navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: "delayed-notification",
+                        message: "Минуло 1 хвилину після запуску зчитування!",
+                        delay: 60000
+                    });
+                } else {
+                    console.log("No active service worker to send message to.");
+                }
         document.getElementById("portConnectScreen").style = "top: 100%;";
         document.getElementById("showCacheAreaBtn").style.display = "block";
         document.getElementById('showCacheAreaBtn').addEventListener('click', showCachedRectangle);
@@ -101,15 +110,7 @@ function connectDevice() {
             if (isWebBLEavailable()) {
                 read();
 
-                if (navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.controller.postMessage({
-                        type: "delayed-notification",
-                        message: "Минуло 1 хвилину після запуску зчитування!",
-                        delay: 60000
-                    });
-                } else {
-                    console.log("No active service worker to send message to.");
-                }
+                
             }
         });
         document.getElementById("start").style.display = "block";

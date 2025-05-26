@@ -76,6 +76,7 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("message", (event) => {
+    console.log("SW received message", event.data);
     const data = event.data;
 
     if (data && data.type === "delayed-notification") {
