@@ -560,7 +560,7 @@ function checkDevicePosition(id, x, y) {
         if (!isInMobileZone({ lat: x, lng: y })) {
             alertElement.innerHTML = `${id} has left the mobile zone!`;
             alertElement.style.top = "15px";
-            alertElement.style.right = "300px";
+            alertElement.style.left = "300px";
         }
     }
 
@@ -568,7 +568,7 @@ function checkDevicePosition(id, x, y) {
     if (!insideAnyZone && userPoligonZones.length > 0) {
         alertElement.innerHTML = `${id} has left the static polygon zone!`;
         alertElement.style.top = "15px";
-        alertElement.style.right = "300px";
+        alertElement.style.left = "300px";
         
     }
 }
