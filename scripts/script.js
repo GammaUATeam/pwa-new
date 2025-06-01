@@ -556,16 +556,17 @@ function checkDevicePosition(id, x, y) {
     }
 
     // Перевірка мобільної геозони наставника (перевіряємо, чи зона створена)
-    if (id !== mentorId) {
-        if (!isInMobileZone({ lat: x, lng: y })) {
-            alertElement.innerHTML = `${id} has left the mobile zone!`;
-            alertElement.style.top = "15px";
-            alertElement.style.left = "300px";
-        }
-    }
+    // if (id !== mentorId) {
+        // if (!isInMobileZone({ lat: x, lng: y })) {
+        //     alertElement.innerHTML = `${id} has left the mobile zone!`;
+        //     alertElement.style.top = "15px";
+        //     alertElement.style.left = "300px";
+        // }
+    
 
     // Якщо не в жодній зоні та статичні зони існують, показуємо сповіщення
     if (!insideAnyZone && userPoligonZones.length > 0) {
+        const alertElement = document.getElementById("alert");
         alertElement.innerHTML = `${id} has left the static polygon zone!`;
         alertElement.style.top = "15px";
         alertElement.style.left = "300px";
