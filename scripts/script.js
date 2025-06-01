@@ -549,7 +549,7 @@ function checkDevicePosition(id, x, y) {
     // Перевірка статичних полігональних геозон
     if (userPoligonZones.length > 0) {
         userPoligonZones.forEach(zone => {
-            if (isInPolygon([x, y], zone)) {
+            if (isInPolygon([y, x], zone)) {
                 insideAnyZone = true;
             }
         });
@@ -570,9 +570,6 @@ function checkDevicePosition(id, x, y) {
         alertElement.style.top = "15px";
         alertElement.style.right = "300px";
         
-        new Notification("Вихід із геозони!", {
-            body: `${id} has left the static polygon zone!`
-        })
     }
 }
 
