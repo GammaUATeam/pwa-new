@@ -570,6 +570,9 @@ function checkDevicePosition(id, x, y) {
         alertElement.innerHTML = `${id} has left the static polygon zone!`;
         alertElement.style.top = "15px";
         alertElement.style.left = "300px";
+        setTimeout(() => {
+            alertElement.style.top = "-100%";
+        }, 3000);
         
     }
 }
