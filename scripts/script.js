@@ -683,3 +683,98 @@ function showCachedRectangle() {
     }
 }
 
+const addedDevices = new Set();
+
+const table = document.getElementById("devicesTable");
+const tbody = document.getElementById("devicesTableBody");
+const manualForm = document.getElementById("manualAddForm");
+const readBtn = document.getElementById("read");
+const addManualDeviceBtn = document.getElementById("addManualDeviceBtn");
+const manualIdInput = document.getElementById("manualIdInput");
+const manualNameInput = document.getElementById("manualNameInput");
+
+// ⏱️ Початкова затримка для демонстрації переходу
+window.addEventListener("DOMContentLoaded", () => {
+  // Симулюємо підключення (можеш замінити на справжню логіку)
+  const portScreen = document.getElementById("portConnectScreen");
+  setTimeout(() => {
+    portScreen.style.display = "none";
+    readBtn.style.display = "block";
+  }, 1000);
+});
+
+// 📡 Кнопка сканування пристроїв
+readBtn.addEventListener("click", async () => {
+  try {
+    const device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true
+    });
+
+    createDeviceRow(device.id, device.name || "");
+
+    // Показуємо таблицю і форму, коли хоча б один пристрій вибрано
+    table.style.display = "table";
+    manualForm.style.display = "block";
+
+    // Показуємо кнопки "Старт/Стоп" якщо потрібно
+    document.getElementById("start").style.display = "block";
+    document.getElementById("stop").style.display = "block";
+  } catch (error) {
+    console.error("Bluetooth помилка:", error);
+    alert("Bluetooth пристрій не вибрано або сталася помилка.");
+  }
+});
+
+// ➕ Ручне додавання пристрою
+addManualDeviceBtn.addEventListener("click", () => {
+  const id = manualIdInput.value.trim();
+  const name = manualNameInput.value.trim();
+
+  if (!id) {
+    alert("Будь ласка, введіть ID пристрою.");
+    return;
+  }
+
+  createDeviceRow(id, name);
+  manualIdInput.value = "";
+  manualNameInput.value = "";
+});
+
+// 🧱 Функція створення рядка таблиці
+function createDeviceRow(deviceId, deviceName = "") {
+  if (addedDevices.has(deviceId)) {
+    alert("Цей пристрій вже додано.");
+    return;
+  }
+
+  addedDevices.add(deviceId);
+
+  const row = document.createElement("tr");
+
+  const idCell = document.createElement("td");
+  idCell.textContent = deviceId;
+
+  const nameCell = document.createElement("td");
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.placeholder = "Введіть ім’я";
+  nameInput.value = deviceName;
+  nameCell.appendChild(nameInput);
+
+  const actionCell = document.createElement("td");
+  const deleteBtn = document.createElement("button");
+  deleteBtn.textContent = "Видалити";
+  deleteBtn.className = "device-action-btn";
+  deleteBtn.addEventListener("click", () => {
+    row.remove();
+    addedDevices.delete(deviceId);
+  });
+
+  actionCell.appendChild(deleteBtn);
+
+  row.appendChild(idCell);
+  row.appendChild(nameCell);
+  row.appendChild(actionCell);
+
+  tbody.appendChild(row);
+}
