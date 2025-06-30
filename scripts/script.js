@@ -142,6 +142,46 @@ function connectDevice() {
 
         showCacheInstructionAndEnableDrawing();
 
+        document.getElementById("showTableBtn").style.display = "block";
+        document.getElementById("addDeviceBtn").style.display = "block";
+        document.getElementById("deleteDeviceBtn").style.display = "block";
+
+        document.getElementById("showTableBtn").addEventListener("click", () => {
+            const container = document.getElementById("deviceTableContainer");
+            container.style.display = (container.style.display === "none") ? "block" : "none";
+        });
+
+        document.getElementById("addDeviceBtn").addEventListener("click", () => {
+            const table = document.getElementById("devicesTable").getElementsByTagName('tbody')[0];
+        
+            const newRow = table.insertRow();
+            const cellId = newRow.insertCell(0);
+            const cellName = newRow.insertCell(1);
+        
+            const inputId = document.createElement("input");
+            inputId.type = "text";
+            inputId.placeholder = "Введіть ID пристрою";
+        
+            const inputName = document.createElement("input");
+            inputName.type = "text";
+            inputName.placeholder = "Введіть дані";
+        
+            cellId.appendChild(inputId);
+            cellName.appendChild(inputName);
+        });
+        
+        document.getElementById("deleteDeviceBtn").addEventListener("click", () => {
+            const tableBody = document.getElementById("devicesTable").getElementsByTagName('tbody')[0];
+            const rows = tableBody.getElementsByTagName('tr');
+
+    
+            if (rows.length > 1) {
+                tableBody.deleteRow(rows.length - 1);
+            } else {
+                console.log("Неможливо видалити останній рядок.");
+                }
+            });
+
         // if (testMode) {
         //     console.log("Starting test mode...");
         //     startTestMode();
@@ -549,7 +589,7 @@ function checkDevicePosition(id, x, y) {
     // Перевірка статичних полігональних геозон
     if (userPoligonZones.length > 0) {
         userPoligonZones.forEach(zone => {
-            if (isInPolygon([y, x], zone)) {
+            if (isInPolygon([x, y], zone)) {
                 insideAnyZone = true;
             }
         });
