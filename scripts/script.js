@@ -307,27 +307,50 @@ function processBLEBufferedData() {
     }
 }
 
+function getAllowedDeviceIds() {
+    const table = document.getElementById("devicesTable").getElementsByTagName("tbody")[0];
+    const rows = table.getElementsByTagName("tr");
+
+    const allowedIds = new Set();
+
+    for (let row of rows) {
+        const inputId = row.getElementsByTagName("input")[0]?.value.trim();
+        if (inputId) {
+            allowedIds.add(inputId);
+        }
+    }
+
+    return allowedIds;
+}
+
 function processBLEJsonData(data) {
     if (
         data &&
-         data.from &&
-         data.packet &&
-         data.packet.decoded &&
-         data.packet.decoded.payload
+        data.from &&
+        data.packet &&
+        data.packet.decoded &&
+        data.packet.decoded.payload
      ) {
-         const payload = data.packet.decoded.payload;
-         const x = payload.latitude_i / 1e7;
-         const y = payload.longitude_i / 1e7;
-         const id = data.from.toString();
-         const SOS = (payload.position_flags & 0x02) > 0;
-         const currentTime = getCurrentTime();
-         // Якщо наставник ще не визначений - запам'ятати перший id
-         if (!mentorId) {
-             mentorId = id;
-             console.log("Визначено ID наставника:", mentorId);
-         }
-         drawNewPoint(x, y, currentTime, SOS, id);
-     }
+        const allowedIds = getAllowedDeviceIds();
+        const id = data.from.toString();
+
+        if (!allowedIds.has(id)) {
+            console.warn("Пристрій не у списку дозволених:", id);
+            return;
+        }
+
+        const payload = data.packet.decoded.payload;
+        const x = payload.latitude_i / 1e7;
+        const y = payload.longitude_i / 1e7;
+        const SOS = (payload.position_flags & 0x02) > 0;
+        const currentTime = getCurrentTime();
+        // Якщо наставник ще не визначений - запам'ятати перший id
+        if (!mentorId) {
+            mentorId = id;
+            console.log("Визначено ID наставника:", mentorId);
+        }
+        drawNewPoint(x, y, currentTime, SOS, id);
+    }
 }
 
 let cachedRectangleLayer = null;
