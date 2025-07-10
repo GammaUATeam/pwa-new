@@ -157,6 +157,7 @@ function connectDevice() {
             const newRow = table.insertRow();
             const cellId = newRow.insertCell(0);
             const cellName = newRow.insertCell(1);
+            const cellAction = newRow.insertCell(2);
         
             const inputId = document.createElement("input");
             inputId.type = "text";
@@ -165,9 +166,24 @@ function connectDevice() {
             const inputName = document.createElement("input");
             inputName.type = "text";
             inputName.placeholder = "Введіть дані";
+
+            const actionBtn = document.createElement("button");
+            actionBtn.type = "button";
+            actionBtn.textContent = "Переглянути дані";
+            actionBtn.addEventListener("click", () => {
+                const deviceId = inputId.value.trim();
+
+                if (deviceId && lastMarkerObject[deviceId]) {
+                    lastMarkerObject[deviceId].openPopup();
+                    map.panTo(lastMarker[deviceId]);
+                } else {
+                    console.warn("Маркер не знайдено для ID:", deviceId);
+                }
+            });
         
             cellId.appendChild(inputId);
             cellName.appendChild(inputName);
+            cellAction.appendChild(actionBtn);
         });
         
         document.getElementById("deleteDeviceBtn").addEventListener("click", () => {
@@ -342,6 +358,7 @@ function processBLEJsonData(data) {
         const payload = data.packet.decoded.payload;
         const x = payload.latitude_i / 1e7;
         const y = payload.longitude_i / 1e7;
+        const battery = payload.battery_level;
         const SOS = (payload.position_flags & 0x02) > 0;
         const currentTime = getCurrentTime();
         // Якщо наставник ще не визначений - запам'ятати перший id
@@ -349,7 +366,7 @@ function processBLEJsonData(data) {
             mentorId = id;
             console.log("Визначено ID наставника:", mentorId);
         }
-        drawNewPoint(x, y, currentTime, SOS, id);
+        drawNewPoint(x, y, currentTime, SOS, id, battery);
     }
 }
 
@@ -431,7 +448,7 @@ function processBufferedData() {
         if (parsedData) {
             const { id, x, y, SOS, currentTime } = parsedData;
             // callSOS(SOS, currentTime, [x, y], id);
-            drawNewPoint(x, y, currentTime, SOS, id);
+            drawNewPoint(x, y, currentTime, SOS, id, battery);
         } else {
             console.log(`Ignored data: ${packet}`);
         }
@@ -497,7 +514,7 @@ function getCurrentTime() {
 
 const allPolylines = {};
 
-function drawNewPoint(x, y, currentTime, SOS, id) {
+function drawNewPoint(x, y, currentTime, SOS, id, battery) {
     console.log(`%c${currentTime} Device: ${id}, ${x}; ${y} - ${SOS ? "SOS" : "No SOS"}`, 'background: #900000; color: #fff');
 
     // Додаємо перевірку та округлення координат
@@ -532,18 +549,45 @@ function drawNewPoint(x, y, currentTime, SOS, id) {
     }
 
     var newMarkerObject = L.marker(newMarker, { icon: currentMarkerIcon });
-    newMarkerObject.on("click", function() {
-        const isVisible = allPolylines[id] && allPolylines[id].length > 0 && map.hasLayer(allPolylines[id][0]);
-        Object.entries(allPolylines).forEach(([deviceId, lines]) => {
-            if (Array.isArray(lines)) {
-                lines.forEach(line => {
-                    if (map.hasLayer(line)) map.removeLayer(line);
-                });
-            }
-        });
 
-        if (!isVisible && allPolylines[id]) {
-            allPolylines[id].forEach(line => map.addLayer(line));
+    let fullName = "(не вказано)";
+    const tableRows = document.getElementById("devicesTable").getElementsByTagName("tbody")[0].getElementsByTagName("tr");
+
+    for (let row of tableRows) {
+        const inputId = row.getElementsByTagName("input")[0].value.trim();
+        if (inputId === id) {
+            fullName = row.getElementsByTagName("input")[1].value.trim() || fullName;
+            break;
+        }
+    }
+    
+    newMarkerObject.bindPopup(`<b>Friendly-name: </b>${id};<br>
+        <b>Ім'я та прізвище: </b>${fullName};<br>
+        <b>Координати: </b>${roundedX}, ${roundedY}; <br>
+        <b>Заряд акумулятора: </b>${battery}%;<br>
+        <b>Час: </b>${currentTime};<br>
+        <button id="popupPathBtn-${id}">Переглянути шлях </button>` );
+    
+    
+        newMarkerObject.on("popupopen", function() {
+        const btn = document.getElementById(`popupPathBtn-${id}`);
+        if (btn) {
+            btn.addEventListener("click", function () {
+                console.log(`popupPathBtn-${id}`);
+        
+                const isVisible = allPolylines[id] && allPolylines[id].length > 0 && map.hasLayer(allPolylines[id][0]);
+                Object.entries(allPolylines).forEach(([deviceId, lines]) => {
+                    if (Array.isArray(lines)) {
+                        lines.forEach(line => {
+                            if (map.hasLayer(line)) map.removeLayer(line);
+                        });
+                    }
+                });
+
+                if (!isVisible && allPolylines[id]) {
+                allPolylines[id].forEach(line => map.addLayer(line));
+                }
+            });
         }
     });
     //     Object.entries(allPolylines).forEach(([deviceId, line]) => {
