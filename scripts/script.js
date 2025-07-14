@@ -91,7 +91,7 @@ function connectDevice() {
             } else {
                 console.log("Permission is denied.")
             }
-        })
+        });
         if (navigator.serviceWorker.controller) {
                     navigator.serviceWorker.controller.postMessage({
                         type: "delayed-notification",
@@ -109,19 +109,16 @@ function connectDevice() {
         document.getElementById("read").addEventListener("click", function () {
             if (isWebBLEavailable()) {
                 read();
-
-                
             }
         });
         document.getElementById("start").style.display = "block";
         document.getElementById("start").addEventListener("click", function(event) {
             if (isWebBLEavailable()) { start() }
-        })
+        });
         document.getElementById("stop").style.display = "block";
         document.getElementById("stop").addEventListener("click", function(event) {
             if (isWebBLEavailable()) { stop() }
-        })
-        
+        });
         
         getUserData();
 
@@ -152,45 +149,13 @@ function connectDevice() {
         });
 
         document.getElementById("addDeviceBtn").addEventListener("click", () => {
-            const table = document.getElementById("devicesTable").getElementsByTagName('tbody')[0];
-        
-            const newRow = table.insertRow();
-            const cellId = newRow.insertCell(0);
-            const cellName = newRow.insertCell(1);
-            const cellAction = newRow.insertCell(2);
-        
-            const inputId = document.createElement("input");
-            inputId.type = "text";
-            inputId.placeholder = "Введіть ID пристрою";
-        
-            const inputName = document.createElement("input");
-            inputName.type = "text";
-            inputName.placeholder = "Введіть дані";
-
-            const actionBtn = document.createElement("button");
-            actionBtn.type = "button";
-            actionBtn.textContent = "Переглянути дані";
-            actionBtn.addEventListener("click", () => {
-                const deviceId = inputId.value.trim();
-
-                if (deviceId && lastMarkerObject[deviceId]) {
-                    lastMarkerObject[deviceId].openPopup();
-                    map.panTo(lastMarker[deviceId]);
-                } else {
-                    console.warn("Маркер не знайдено для ID:", deviceId);
-                }
-            });
-        
-            cellId.appendChild(inputId);
-            cellName.appendChild(inputName);
-            cellAction.appendChild(actionBtn);
+            addTableRow();
         });
         
         document.getElementById("deleteDeviceBtn").addEventListener("click", () => {
             const tableBody = document.getElementById("devicesTable").getElementsByTagName('tbody')[0];
             const rows = tableBody.getElementsByTagName('tr');
 
-    
             if (rows.length > 1) {
                 tableBody.deleteRow(rows.length - 1);
             } else {
@@ -210,6 +175,86 @@ function connectDevice() {
         //     }
         // }
     });
+}
+
+function addTableRow(afterRow = null) {
+    const table = document.getElementById("devicesTable").getElementsByTagName('tbody')[0];
+
+    let newRow;
+    if (afterRow) {
+        newRow = table.insertRow(afterRow.rowIndex);
+    } else {
+        newRow = table.insertRow();
+    }
+        
+    const cellId = newRow.insertCell(0);
+    const cellName = newRow.insertCell(1);
+    const cellAction = newRow.insertCell(2);
+        
+    const inputId = document.createElement("input");
+    inputId.type = "text";
+    inputId.placeholder = "Введіть ID пристрою";
+        
+    const inputName = document.createElement("input");
+    inputName.type = "text";
+    inputName.placeholder = "Введіть дані";
+
+    
+    const actionSelect = document.createElement("select");
+    const optionDefault = document.createElement("option");
+    optionDefault.value = "";
+    optionDefault.textContent = "Виберіть дію";
+    optionDefault.selected = true;
+    optionDefault.disabled = true;
+
+    const optionView = document.createElement("option");
+    optionView.value = "view";
+    optionView.textContent = "Переглянути дані";
+
+    const optionAdd = document.createElement("option");
+    optionAdd.value = "add";
+    optionAdd.textContent = "Додати рядок";
+
+    const optionDelete = document.createElement("option");
+    optionDelete.value = "delete";
+    optionDelete.textContent = "Видалити рядок";
+
+    actionSelect.appendChild(optionDefault);
+    actionSelect.appendChild(optionView);
+    actionSelect.appendChild(optionAdd);
+    actionSelect.appendChild(optionDelete);
+
+    actionSelect.addEventListener("change", () => {
+        const selectedAction = actionSelect.value;
+        const deviceId = inputId.value.trim();
+
+        switch (selectedAction) {
+            case "view":
+                if (deviceId && lastMarkerObject[deviceId]) {
+                    lastMarkerObject[deviceId].openPopup();
+                    map.panTo(lastMarker[deviceId]);
+                } else {
+                    console.log("Маркер не знайдено для ID: ", deviceId);
+                }
+                break;
+
+            case "add":
+                addTableRow(newRow);
+                break;
+
+            case "delete":
+                table.deleteRow(newRow.rowIndex - 1);
+                break;
+
+            default:
+                break;
+        }
+        actionSelect.value = "";
+    });
+
+    cellId.appendChild(inputId);
+    cellName.appendChild(inputName);
+    cellAction.appendChild(actionSelect);
 }
 
 function isWebBLEavailable() {
