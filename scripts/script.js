@@ -142,6 +142,7 @@ function connectDevice() {
         document.getElementById("showTableBtn").style.display = "block";
         document.getElementById("addDeviceBtn").style.display = "block";
         document.getElementById("deleteDeviceBtn").style.display = "block";
+        document.getElementById("clearDataBtn").style.display = "block";
 
         document.getElementById("showTableBtn").addEventListener("click", () => {
             const container = document.getElementById("deviceTableContainer");
@@ -162,6 +163,29 @@ function connectDevice() {
                 console.log("Неможливо видалити останній рядок.");
                 }
             });
+
+        document.getElementById("clearDataBtn").addEventListener("click", async ()=> {
+            await db.devices.clear();
+            await db.points.clear();
+            await db.tiles.clear();
+
+            const tableBody = document.getElementById("devicesTable").getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = "";
+
+            Object.values(lastMarkerObject).forEach(m => map.removeLayer(m));
+            Object.values(allPolylines).forEach(lines => {
+                lines.forEach(line => map.removeLayer(line));
+            });
+
+            Object.keys(lastMarker).forEach(key => delete lastMarker[key]);
+            Object.keys(lastMarkerObject).forEach(key => delete lastMarkerObject[key]);
+            Object.keys(allPolylines).forEach(key => delete allPolylines[key]);
+            
+
+        });
+        
+        await restoreTableFromDB();
+        await restorePointsFromDB();
 
         // if (testMode) {
         //     console.log("Starting test mode...");
@@ -199,7 +223,28 @@ function addTableRow(afterRow = null) {
     inputName.type = "text";
     inputName.placeholder = "Введіть дані";
 
+    inputId.addEventListener("change", () => {
+        const id = inputId.value.trim();
+        const name = inputName.value.trim();
+        if (id) saveDeviceToDB(id, name);
+    });
+
+    inputName.addEventListener("change", () => {
+        const id = inputId.value.trim();
+        const name = inputName.value.trim();
+        if (id) saveDeviceToDB(id, name);
+    });
     
+    const actionSelect = createActionSelect(newRow, inputId);
+
+    cellId.appendChild(inputId);
+    cellName.appendChild(inputName);
+    cellAction.appendChild(actionSelect);
+}
+
+function createActionSelect(newRow, inputId) {
+    const table = document.getElementById("devicesTable").getElementsByTagName('tbody')[0];
+
     const actionSelect = document.createElement("select");
     const optionDefault = document.createElement("option");
     optionDefault.value = "";
@@ -246,15 +291,11 @@ function addTableRow(afterRow = null) {
                 table.deleteRow(newRow.rowIndex - 1);
                 break;
 
-            default:
-                break;
         }
         actionSelect.value = "";
     });
 
-    cellId.appendChild(inputId);
-    cellName.appendChild(inputName);
-    cellAction.appendChild(actionSelect);
+    return actionSelect;
 }
 
 function isWebBLEavailable() {
@@ -406,8 +447,8 @@ function processBLEJsonData(data) {
         const battery = payload.battery_level;
         const SOS = (payload.position_flags & 0x02) > 0;
         const currentTime = getCurrentTime();
-        // Якщо наставник ще не визначений - запам'ятати перший id
-        if (!mentorId) {
+        
+        if (id == "500001") {
             mentorId = id;
             console.log("Визначено ID наставника:", mentorId);
         }
@@ -415,106 +456,59 @@ function processBLEJsonData(data) {
     }
 }
 
-let cachedRectangleLayer = null;
-function showCacheInstructionAndEnableDrawing() {
-    const alertElement = document.getElementById("alert");
-    alertElement.style.left = "15px";
-    alertElement.style.right = "";
-    alertElement.style.top = "";
-    alertElement.style.bottom = "15px";
-    alertElement.innerHTML = "Закешуйте територію, намалювавши прямокутник";
 
-    // Ініціалізуємо інструмент малювання тільки прямокутника
-    const drawControlCasche = new L.Control.Draw({
-        draw: {
-            polyline: false,
-            polygon: false,
-            circle: false,
-            marker: false,
-            circlemarker: false,
-            rectangle: {
-                shapeOptions: {
-                    color: 'blue'
-                }
-            }
-        },
-        edit: false
-    });
+// // Змінюємо частоту оновлення координат (наприклад, кожні 5 секунд)
+// const updateInterval = 5000; // 5 секунд
 
-    map.addControl(drawControlCasche);
+// // Функція для початку тестового режиму
+// function startTestMode() {
+//     // Імітуємо отримання даних з трекера
+//     setInterval(() => {
+//         // Генеруємо випадкові координати
+//         const lat = 49.83 + (Math.random() * 0.02);
+//         const lng = 24.01 + (Math.random() * 0.02);
+//         const sos = Math.random() < 0.2; // Імітуємо SOS з певною ймовірністю
+//         const id = "TEST" + Math.floor(Math.random() * 10);
 
-    map.once(L.Draw.Event.CREATED, async function (event) {
-        const drawnRectangle = event.layer;
-        const bounds = drawnRectangle.getBounds();
-        cacheBounds = bounds; // Зберігаємо для перегляду!
-        map.removeLayer(drawnRectangle); // Прибираємо прямокутник після малювання
-        map.removeControl(drawControlCasche); // Прибираємо панель малювання
+//         // Створюємо тестовий пакет даних
+//         const testData = `${sos ? 's' : 'o'}${id},${lat},${lng}`;
+//         console.log("Simulating data:", testData);
+//         dataBuffer += testData;
+//         processBufferedData();
+//     }, updateInterval); // Відправляємо дані кожні 5 секунд
+// }
 
-        alertElement.style.top = "-100%";
-        
-        await cacheTiles(bounds); // Кешуємо тайли
+// function processBufferedData() {
+//     const packets = dataBuffer.split(/(?=s|o)/); // Розділяємо дані за SOS або ID
+//     dataBuffer = packets.pop(); // Останній неповний пакет залишаємо в буфері
 
-        alertElement.innerHTML = "Територію закешовано!";
-        alertElement.style.top = "15px";
-        alertElement.style.left = "300px";
+//     packets.forEach((packet) => {
+//         const parsedData = parseDataString(packet);
+//         if (parsedData) {
+//             const { id, x, y, SOS, currentTime } = parsedData;
+//             // callSOS(SOS, currentTime, [x, y], id);
+//             drawNewPoint(x, y, currentTime, SOS, id, battery);
+//         } else {
+//             console.log(`Ignored data: ${packet}`);
+//         }
+//     });
+// }
 
-        setTimeout(() => {
-            alertElement.style.top = "-100%";
-        }, 3000);
-    });
-}
-// Змінюємо частоту оновлення координат (наприклад, кожні 5 секунд)
-const updateInterval = 5000; // 5 секунд
+// function parseDataString(str) {
+//     try {
+//         const [SOS_ID, x, y] = str.split(",");
+//         const SOS = SOS_ID[0];
+//         const id = SOS_ID.slice(1);
 
-// Функція для початку тестового режиму
-function startTestMode() {
-    // Імітуємо отримання даних з трекера
-    setInterval(() => {
-        // Генеруємо випадкові координати
-        const lat = 49.83 + (Math.random() * 0.02);
-        const lng = 24.01 + (Math.random() * 0.02);
-        const sos = Math.random() < 0.2; // Імітуємо SOS з певною ймовірністю
-        const id = "TEST" + Math.floor(Math.random() * 10);
-
-        // Створюємо тестовий пакет даних
-        const testData = `${sos ? 's' : 'o'}${id},${lat},${lng}`;
-        console.log("Simulating data:", testData);
-        dataBuffer += testData;
-        processBufferedData();
-    }, updateInterval); // Відправляємо дані кожні 5 секунд
-}
-
-function processBufferedData() {
-    const packets = dataBuffer.split(/(?=s|o)/); // Розділяємо дані за SOS або ID
-    dataBuffer = packets.pop(); // Останній неповний пакет залишаємо в буфері
-
-    packets.forEach((packet) => {
-        const parsedData = parseDataString(packet);
-        if (parsedData) {
-            const { id, x, y, SOS, currentTime } = parsedData;
-            // callSOS(SOS, currentTime, [x, y], id);
-            drawNewPoint(x, y, currentTime, SOS, id, battery);
-        } else {
-            console.log(`Ignored data: ${packet}`);
-        }
-    });
-}
-
-function parseDataString(str) {
-    try {
-        const [SOS_ID, x, y] = str.split(",");
-        const SOS = SOS_ID[0];
-        const id = SOS_ID.slice(1);
-
-        if (checkCoordinatesFormat(x, y) && (SOS === "s" || SOS === "o")) {
-            const currentTime = getCurrentTime();
-            return { id, x: parseFloat(x), y: parseFloat(y), SOS: SOS === "s", currentTime };
-        }
-    } catch (error) {
-        console.error("Error parsing data string:", error);
-    }
-    return null;
-}
+//         if (checkCoordinatesFormat(x, y) && (SOS === "s" || SOS === "o")) {
+//             const currentTime = getCurrentTime();
+//             return { id, x: parseFloat(x), y: parseFloat(y), SOS: SOS === "s", currentTime };
+//         }
+//     } catch (error) {
+//         console.error("Error parsing data string:", error);
+//     }
+//     return null;
+// }
 
 function checkCoordinatesFormat(x, y) {
     return !isNaN(x) && !isNaN(y) && x.length > 0 && y.length > 0;
@@ -654,6 +648,14 @@ function drawNewPoint(x, y, currentTime, SOS, id, battery) {
     lastMarkerObject[id] = newMarkerObject;
     
     checkDevicePosition(id, roundedX, roundedY); // Передаємо округлені координати
+    db.points.add({
+        deviceId: id,
+        x: roundedX,
+        y: roundedY,
+        time: currentTime,
+        battery: battery,
+        sos: SOS
+    });
 }
 
 var drawnFeatures = new L.FeatureGroup();
@@ -729,11 +731,62 @@ function checkDevicePosition(id, x, y) {
     }
 }
 
+let cachedRectangleLayer = null;
+function showCacheInstructionAndEnableDrawing() {
+    const alertElement = document.getElementById("alert");
+    alertElement.style.left = "15px";
+    alertElement.style.right = "";
+    alertElement.style.top = "";
+    alertElement.style.bottom = "15px";
+    alertElement.innerHTML = "Закешуйте територію, намалювавши прямокутник";
+
+    // Ініціалізуємо інструмент малювання тільки прямокутника
+    const drawControlCasche = new L.Control.Draw({
+        draw: {
+            polyline: false,
+            polygon: false,
+            circle: false,
+            marker: false,
+            circlemarker: false,
+            rectangle: {
+                shapeOptions: {
+                    color: 'blue'
+                }
+            }
+        },
+        edit: false
+    });
+
+    map.addControl(drawControlCasche);
+
+    map.once(L.Draw.Event.CREATED, async function (event) {
+        const drawnRectangle = event.layer;
+        const bounds = drawnRectangle.getBounds();
+        cacheBounds = bounds; // Зберігаємо для перегляду!
+        map.removeLayer(drawnRectangle); // Прибираємо прямокутник після малювання
+        map.removeControl(drawControlCasche); // Прибираємо панель малювання
+
+        alertElement.style.top = "-100%";
+        
+        await cacheTiles(bounds); // Кешуємо тайли
+
+        alertElement.innerHTML = "Територію закешовано!";
+        alertElement.style.top = "15px";
+        alertElement.style.left = "300px";
+
+        setTimeout(() => {
+            alertElement.style.top = "-100%";
+        }, 3000);
+    });
+}
 
 const db = new Dexie("TileCache");
     db.version(1).stores({
-    tiles: "key, blob"
+    tiles: "key, blob",
+    devices: "id, name",
+    points: "[deviceId+time], deviceId, x, y, time, sos, battery"
 });
+
 db.open().then(() => {
     console.log("IndexedDB підключена!");
 }).catch((error) => {
@@ -796,6 +849,14 @@ function getTileUrls(bounds, zoomLevels, tileSize, tileLayerUrl) {
 }
 
 async function cacheTiles(bounds) {
+    if (!db.isOpen()) {
+        try {
+            await db.open();
+        } catch (err) {
+            console.error("Не вдалося повторно відкрити DB:", err);
+            return;
+        }
+    }
     const zoomLevels = [13, 14, 15, 16, 17, 18];
     const tileSize = 256;
     const tileLayerUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -832,6 +893,73 @@ function showCachedRectangle() {
         map.fitBounds(cacheBounds);
     } else {
         alert('Закешована зона не визначена!');
+    }
+}
+
+async function saveDeviceToDB(id, name) {
+    try {
+        await db.devices.put({id, name});
+        console.log(`Saved: ${id} - ${name};`);
+    } catch (error) {
+        console.error("Error in saving device to DB: ", error);
+    }
+    
+}
+
+async function restoreTableFromDB() {
+    const allDevices = await db.devices.toArray();
+    allDevices.forEach(device => {
+        addTableRowFromDB(device.id, device.name);
+    });
+}
+
+function addTableRowFromDB(id = "", name = "") {
+    const table = document.getElementById("devicesTable").getElementsByTagName('tbody')[0];
+    const newRow = table.insertRow();
+
+    const cellId = newRow.insertCell(0);
+    const cellName = newRow.insertCell(1);
+    const cellAction = newRow.insertCell(2);
+
+    const inputId = document.createElement("input");
+    inputId.type = "text";
+    inputId.value = id;
+
+    const inputName = document.createElement("input");
+    inputName.type = "text";
+    inputName.value = name;
+
+    inputId.addEventListener("change", () => {
+        const newId = inputId.value.trim();
+        const newName = inputName.value.trim();
+        if (newId) saveDeviceToDB(newId, newName);
+    });
+
+    inputName.addEventListener("change", () => {
+        const newId = inputId.value.trim();
+        const newName = inputName.value.trim();
+        if (newId) saveDeviceToDB(newId, newName);
+    });
+
+    const actionSelect = createActionSelect(newRow, inputId);
+
+    cellId.appendChild(inputId);
+    cellName.appendChild(inputName);
+    cellAction.appendChild(actionSelect); 
+}
+
+async function restorePointsFromDB() {
+    const allPoints = await db.points.orderBy("deviceId").toArray();
+
+    for (const point of allPoints) {
+        drawNewPoint(
+            point.x,
+            point.y,
+            point.time,
+            point.sos,
+            point.deviceId,
+            point.battery
+        );
     }
 }
 
