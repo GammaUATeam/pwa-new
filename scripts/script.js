@@ -309,6 +309,14 @@ function isWebBLEavailable() {
 }
 
 function getDeviceInfo() {
+    if (bluetoothDeviceDetected?.gatt?.connected) {
+        bluetoothDeviceDetected.gatt.disconnect();
+        console.log("Попередній пристрій відключено.");
+    }
+    bluetoothDeviceDetected = null;
+    gattCharacteristic = null;
+    
+    
     let options = {
         acceptAllDevices: true,
         optionalServices: [SERVICE_UUID]
@@ -324,7 +332,7 @@ function getDeviceInfo() {
 }
 
 function read() {
-    return (bluetoothDeviceDetected ? Promise.resolve() : getDeviceInfo())
+    return getDeviceInfo()
     .then(connectGATT)
     .then(_ => {
         console.log("Reading data...")
