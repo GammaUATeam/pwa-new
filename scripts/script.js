@@ -33,6 +33,62 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
 }).addTo(map);
 
+const db = new Dexie("TileCache");
+    db.version(1).stores({
+    tiles: "key, blob",
+    devices: "id, name",
+    points: "[deviceId+time], deviceId, x, y, time, sos, battery"
+});
+
+db.open().then(() => {
+    console.log("IndexedDB підключена!");
+}).catch((error) => {
+    console.error("Помилка підключення до IndexedDB:", error);
+});
+
+const CachedTileLayer = L.TileLayer.extend({
+  createTile: function(coords, done) {
+    const tile = document.createElement('img');
+    const key = `${coords.z}_${coords.x}_${coords.y}`;
+    tile.crossOrigin = '';
+
+    db.tiles.get(key).then(cached => {
+      if (cached && cached.blob) {
+        const blobUrl = URL.createObjectURL(cached.blob);
+        tile.src = blobUrl;
+        tile.onload = () => done(null, tile);
+        tile.onerror = () => done('Error loading cached tile', tile);
+      } else {
+        const url = this.getTileUrl(coords);
+        tile.src = url;
+        tile.onload = () => {
+          fetch(url)
+            .then(res => res.blob())
+            .then(blob => db.tiles.put({ key, blob }))
+            .catch(e => console.warn('Failed to cache tile:', e));
+          done(null, tile);
+        };
+        tile.onerror = () => done('Error loading network tile', tile);
+      }
+    }).catch(() => {
+      const url = this.getTileUrl(coords);
+      tile.src = url;
+      tile.onload = () => done(null, tile);
+      tile.onerror = () => done('Error loading tile', tile);
+    });
+
+    return tile;
+  }
+});
+
+
+
+const cachedLayer = new CachedTileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: maxAllowedZoom,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+});
+map.addLayer(cachedLayer);
+
 map.setView([49.834956, 24.014456], 14);
 
 
@@ -465,58 +521,7 @@ function processBLEJsonData(data) {
 }
 
 
-// // Змінюємо частоту оновлення координат (наприклад, кожні 5 секунд)
-// const updateInterval = 5000; // 5 секунд
 
-// // Функція для початку тестового режиму
-// function startTestMode() {
-//     // Імітуємо отримання даних з трекера
-//     setInterval(() => {
-//         // Генеруємо випадкові координати
-//         const lat = 49.83 + (Math.random() * 0.02);
-//         const lng = 24.01 + (Math.random() * 0.02);
-//         const sos = Math.random() < 0.2; // Імітуємо SOS з певною ймовірністю
-//         const id = "TEST" + Math.floor(Math.random() * 10);
-
-//         // Створюємо тестовий пакет даних
-//         const testData = `${sos ? 's' : 'o'}${id},${lat},${lng}`;
-//         console.log("Simulating data:", testData);
-//         dataBuffer += testData;
-//         processBufferedData();
-//     }, updateInterval); // Відправляємо дані кожні 5 секунд
-// }
-
-// function processBufferedData() {
-//     const packets = dataBuffer.split(/(?=s|o)/); // Розділяємо дані за SOS або ID
-//     dataBuffer = packets.pop(); // Останній неповний пакет залишаємо в буфері
-
-//     packets.forEach((packet) => {
-//         const parsedData = parseDataString(packet);
-//         if (parsedData) {
-//             const { id, x, y, SOS, currentTime } = parsedData;
-//             // callSOS(SOS, currentTime, [x, y], id);
-//             drawNewPoint(x, y, currentTime, SOS, id, battery);
-//         } else {
-//             console.log(`Ignored data: ${packet}`);
-//         }
-//     });
-// }
-
-// function parseDataString(str) {
-//     try {
-//         const [SOS_ID, x, y] = str.split(",");
-//         const SOS = SOS_ID[0];
-//         const id = SOS_ID.slice(1);
-
-//         if (checkCoordinatesFormat(x, y) && (SOS === "s" || SOS === "o")) {
-//             const currentTime = getCurrentTime();
-//             return { id, x: parseFloat(x), y: parseFloat(y), SOS: SOS === "s", currentTime };
-//         }
-//     } catch (error) {
-//         console.error("Error parsing data string:", error);
-//     }
-//     return null;
-// }
 
 function checkCoordinatesFormat(x, y) {
     return !isNaN(x) && !isNaN(y) && x.length > 0 && y.length > 0;
@@ -788,18 +793,6 @@ function showCacheInstructionAndEnableDrawing() {
     });
 }
 
-const db = new Dexie("TileCache");
-    db.version(1).stores({
-    tiles: "key, blob",
-    devices: "id, name",
-    points: "[deviceId+time], deviceId, x, y, time, sos, battery"
-});
-
-db.open().then(() => {
-    console.log("IndexedDB підключена!");
-}).catch((error) => {
-    console.error("Помилка підключення до IndexedDB:", error);
-});
 
 let drawnRectangle = null;
 let drawControlCasche = null;
