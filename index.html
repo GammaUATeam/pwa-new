@@ -9,10 +9,13 @@
 
     <link rel="stylesheet" href="styles/style.css" />
     <link href="styles/leaflet.css" rel="stylesheet" />
+    <link rel="stylesheet" href="styles/header.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
     <link rel="shortcut icon" href="img/tourist_icon.png" type="image/x-icon" />
     <link rel="manifest" href="manifest.json" />
     <link rel="icon" href="images/icon_192.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;900&display=swap"
+        rel="stylesheet">
 
 </head>
 
@@ -23,19 +26,27 @@
 
     <div id="osm-map"></div>
 
-    <button id="showCacheAreaBtn" style="position:absolute; bottom:15px; left:15px; z-index:1000; display: none;">Переглянути закешовану зону</button>
-    <button id="read" style="position:absolute; top:8px; left:40px; z-index:1000; display: none;">Сканувати пристрої</button>
-    <button id="start" style="position:absolute; top:30px; left:40px; z-index:1000; display: none;" disabled>Отримувати дані з пристрою</button>
-    <button id="stop" style="position:absolute; top:50px; left:40px; z-index:1000; display: none;" disabled>Перестати отримувати дані</button>
-  
-    <button id="showTableBtn" style="position:absolute; top:10px; right:71px; z-index:1002; display: none;">Пристрої</button>
-    <button id="addDeviceBtn" style="position:absolute; top:30px; right:43px; z-index:1002; display: none;">Додати рядок</button>
-    <button id="deleteDeviceBtn" style="position:absolute; top:50px; right:27px; z-index:1002; display: none;">Видалити рядок</button>
-    <button id="clearDataBtn" style="position:absolute; bottom:15px; right:44px; z-index:1002; display: none;">Новий похід//Очистити все</button>
+    <header class="header">
+        <div class="nav__buttons">
+            <button id="read" class="scan__btn">Сканувати пристрої</button>
+            <button id="start" class="start__btn" disabled>Отримувати дані з пристрою</button>
+            <button id="stop" class="stop__btn" disabled>Перестати отримувати дані</button>
+            <button id="clearDataBtn" class="clear__data__btn">Новий похід//Очистити все</button>
+        </div>
+
+        <div class="nav__tables">
+            <button id="showTableBtn" class="show__tables__btn">Пристрої</button>
+            <button id="addDeviceBtn" class="add__device__btn"><img src="images/add_row.svg" alt=""></button>
+            <button id="deleteDeviceBtn" class="delete__device__btn"><img src="images/delete_row.svg" alt=""></button>
+        </div>
+    </header>
+
+    <button id="showCacheAreaBtn" class="cached__area__btn">Переглянути закешовану зону</button>
 
     <p id="alert">Тестове сповіщення</p>
 
-    <div id="deviceTableContainer" style="position:absolute; top:95px; right:10px; z-index:1001; display:none; background:white; padding:10px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.3);">
+    <div id="deviceTableContainer"
+        style="position:absolute; top:95px; right:10px; z-index:1001; display:none; background:white; padding:10px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.3);">
         <table id="devicesTable" border="1px">
             <thead>
                 <th>ID пристрою</th>
@@ -45,7 +56,7 @@
             </tbody>
         </table>
     </div>
-  
+
     <script src="scripts/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>

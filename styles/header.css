@@ -1,0 +1,93 @@
+.header {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    background-color: #89A57E;
+    z-index: 2000;
+}
+
+
+.nav__buttons {
+    display: flex;
+    margin-left: 45px;
+}
+
+.nav__buttons>button {
+    color: #ffffff;                  /* чисто білий */
+    border-bottom: 2px solid #ffffff;
+    text-align: center;
+    font-family: "Roboto", sans-serif;
+    font-size: 14px;                 /* стандарт Material */
+    font-weight: 500;                /* середня жирність */
+    text-transform: uppercase;
+    
+    align-items: center;
+    justify-content: center;
+    
+
+}
+
+.nav__tables {
+    display: flex;
+    
+}
+
+.nav__tables>button {
+    color: #ffffff;                  /* чисто білий */
+    border-bottom: 2px solid #ffffff;
+    text-align: center;
+    font-family: "Roboto", sans-serif;
+    font-size: 14px;                 /* стандарт Material */
+    font-weight: 500;                /* середня жирність */
+    text-transform: uppercase;
+    
+    align-items: center;
+    justify-content: center;
+    
+}
+
+.scan__btn {
+    z-index:1000;
+    display: none;
+}
+
+.start__btn {
+    z-index:1000;
+    display: none;
+}
+
+.stop__btn {
+    z-index:1000;
+    display: none;
+}
+
+.clear__data__btn {
+    z-index:1002;
+    display: none;
+}
+
+.show__tables__btn {
+    z-index:1002;
+    display: none;
+}
+
+.add__device__btn {
+    z-index:1002;
+    display: none;
+}
+
+.delete__device__btn {
+    z-index:1002;
+    display: none;
+}
+
+.cached__area__btn {
+    position:absolute;
+    bottom:15px;
+    left:15px;
+    z-index:1000;
+    display: none;
+}
+
+
+
