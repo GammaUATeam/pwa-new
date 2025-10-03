@@ -1,3 +1,48 @@
+/**
+ * Зберігає або оновлює дані пристрою в IndexedDB.
+ * @param {string} id - ID пристрою.
+ * @param {string} name - Ім'я, прив'язане до пристрою.
+ */
+async function saveDeviceToDB(id, name) {
+    // Перевіряємо, що ID не порожній, перш ніж зберігати
+    if (!id) return;
+
+    try {
+        // Dexie 'put' додасть новий запис або оновить існуючий за ключем 'id'
+        await db.devices.put({ id, name });
+        console.log(`Пристрій ${id} (${name}) збережено в IndexedDB.`);
+    } catch (error) {
+        console.error("Помилка збереження пристрою в IndexedDB:", error);
+    }
+}
+
+
+const modal = document.getElementById("deviceTableModal");
+const showTableBtn = document.getElementById("showTableBtn");
+const closeTableBtn = document.getElementById("closeTableBtn");
+
+if (showTableBtn) {
+    showTableBtn.addEventListener("click", () => {
+        modal.style.display = "flex"; // показати модальне
+    });
+}
+
+if (closeTableBtn) {
+    closeTableBtn.addEventListener("click", () => {
+        modal.style.display = "none"; // закрити
+    });
+}
+
+// Додатково: закривати по кліку на фон
+modal.addEventListener("click", (e) => {
+    if (e.target === modal) {
+        modal.style.display = "none";
+    }
+});
+
+
+
+
 if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").then(registration => {
         console.log("SW Registered!");
@@ -34,7 +79,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 }).addTo(map);
 
 const db = new Dexie("TileCache");
-    db.version(1).stores({
+db.version(1).stores({
     tiles: "key, blob",
     devices: "id, name",
     points: "[deviceId+time], deviceId, x, y, time, sos, battery"
@@ -47,38 +92,38 @@ db.open().then(() => {
 });
 
 const CachedTileLayer = L.TileLayer.extend({
-  createTile: function(coords, done) {
-    const tile = document.createElement('img');
-    const key = `${coords.z}_${coords.x}_${coords.y}`;
-    tile.crossOrigin = '';
+    createTile: function (coords, done) {
+        const tile = document.createElement('img');
+        const key = `${coords.z}_${coords.x}_${coords.y}`;
+        tile.crossOrigin = '';
 
-    db.tiles.get(key).then(cached => {
-      if (cached && cached.blob) {
-        const blobUrl = URL.createObjectURL(cached.blob);
-        tile.src = blobUrl;
-        tile.onload = () => done(null, tile);
-        tile.onerror = () => done('Error loading cached tile', tile);
-      } else {
-        const url = this.getTileUrl(coords);
-        tile.src = url;
-        tile.onload = () => {
-          fetch(url)
-            .then(res => res.blob())
-            .then(blob => db.tiles.put({ key, blob }))
-            .catch(e => console.warn('Failed to cache tile:', e));
-          done(null, tile);
-        };
-        tile.onerror = () => done('Error loading network tile', tile);
-      }
-    }).catch(() => {
-      const url = this.getTileUrl(coords);
-      tile.src = url;
-      tile.onload = () => done(null, tile);
-      tile.onerror = () => done('Error loading tile', tile);
-    });
+        db.tiles.get(key).then(cached => {
+            if (cached && cached.blob) {
+                const blobUrl = URL.createObjectURL(cached.blob);
+                tile.src = blobUrl;
+                tile.onload = () => done(null, tile);
+                tile.onerror = () => done('Error loading cached tile', tile);
+            } else {
+                const url = this.getTileUrl(coords);
+                tile.src = url;
+                tile.onload = () => {
+                    fetch(url)
+                        .then(res => res.blob())
+                        .then(blob => db.tiles.put({ key, blob }))
+                        .catch(e => console.warn('Failed to cache tile:', e));
+                    done(null, tile);
+                };
+                tile.onerror = () => done('Error loading network tile', tile);
+            }
+        }).catch(() => {
+            const url = this.getTileUrl(coords);
+            tile.src = url;
+            tile.onload = () => done(null, tile);
+            tile.onerror = () => done('Error loading tile', tile);
+        });
 
-    return tile;
-  }
+        return tile;
+    }
 });
 
 
@@ -137,7 +182,7 @@ const CHARACTERISTIC_UUID = "d792d09f-1d6e-422b-991a-e2933e7d848b";
 var bluetoothDeviceDetected
 var gattCharacteristic
 let bleDataBuffer = "";
-let mentorId = null;
+//let mentorId = null;
 
 function connectDevice() {
     document.getElementById("portConnectScreen").addEventListener("click", async () => {
@@ -149,33 +194,29 @@ function connectDevice() {
             }
         });
         if (navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.controller.postMessage({
-                        type: "delayed-notification",
-                        message: "Минуло 2 секунди після запуску зчитування!",
-                        delay: 2000
-                    });
-                } else {
-                    console.log("No active service worker to send message to.");
-                }
+            navigator.serviceWorker.controller.postMessage({
+                type: "delayed-notification",
+                message: "Минуло 2 секунди після запуску зчитування!",
+                delay: 2000
+            });
+        } else {
+            console.log("No active service worker to send message to.");
+        }
         document.getElementById("portConnectScreen").style = "top: 100%;";
         document.getElementById("showCacheAreaBtn").style.display = "block";
         document.getElementById('showCacheAreaBtn').addEventListener('click', showCachedRectangle);
-    
-        document.getElementById("read").style.display = "block";
-        document.getElementById("read").addEventListener("click", function () {
+
+        // --- ЗМІНЕНО ---
+        // Показуємо нову кнопку та додаємо обробник
+        const connectBtn = document.getElementById("connectBtn");
+        connectBtn.style.display = "block";
+        connectBtn.addEventListener("click", function () {
             if (isWebBLEavailable()) {
-                read();
+                connectAndStartNotifications();
             }
         });
-        document.getElementById("start").style.display = "block";
-        document.getElementById("start").addEventListener("click", function(event) {
-            if (isWebBLEavailable()) { start() }
-        });
-        document.getElementById("stop").style.display = "block";
-        document.getElementById("stop").addEventListener("click", function(event) {
-            if (isWebBLEavailable()) { stop() }
-        });
-        
+        // --- КІНЕЦЬ ЗМІН ---
+
         getUserData();
 
         if (navigator.geolocation) {
@@ -196,8 +237,6 @@ function connectDevice() {
         showCacheInstructionAndEnableDrawing();
 
         document.getElementById("showTableBtn").style.display = "block";
-        document.getElementById("addDeviceBtn").style.display = "block";
-        document.getElementById("deleteDeviceBtn").style.display = "block";
         document.getElementById("clearDataBtn").style.display = "block";
 
         document.getElementById("showTableBtn").addEventListener("click", () => {
@@ -208,52 +247,32 @@ function connectDevice() {
         document.getElementById("addDeviceBtn").addEventListener("click", () => {
             addTableRow();
         });
-        
-        document.getElementById("deleteDeviceBtn").addEventListener("click", () => {
-            const tableBody = document.getElementById("devicesTable").getElementsByTagName('tbody')[0];
-            const rows = tableBody.getElementsByTagName('tr');
 
-            if (rows.length > 1) {
-                tableBody.deleteRow(rows.length - 1);
-            } else {
-                console.log("Неможливо видалити останній рядок.");
-                }
-            });
+        document.getElementById("clearDataBtn").addEventListener("click", async () => {
+            if (confirm("Ви точно впевнені, що хочете видалити всі дані?")) {
+                await db.devices.clear();
+                await db.points.clear();
+                await db.tiles.clear();
 
-        document.getElementById("clearDataBtn").addEventListener("click", async ()=> {
-            await db.devices.clear();
-            await db.points.clear();
-            await db.tiles.clear();
+                const tableBody = document.getElementById("devicesTable").getElementsByTagName('tbody')[0];
+                tableBody.innerHTML = "";
 
-            const tableBody = document.getElementById("devicesTable").getElementsByTagName('tbody')[0];
-            tableBody.innerHTML = "";
+                Object.values(lastMarkerObject).forEach(m => map.removeLayer(m));
+                Object.values(allPolylines).forEach(lines => {
+                    lines.forEach(line => map.removeLayer(line));
+                });
 
-            Object.values(lastMarkerObject).forEach(m => map.removeLayer(m));
-            Object.values(allPolylines).forEach(lines => {
-                lines.forEach(line => map.removeLayer(line));
-            });
+                Object.keys(lastMarker).forEach(key => delete lastMarker[key]);
+                Object.keys(lastMarkerObject).forEach(key => delete lastMarkerObject[key]);
+                Object.keys(allPolylines).forEach(key => delete allPolylines[key]);
 
-            Object.keys(lastMarker).forEach(key => delete lastMarker[key]);
-            Object.keys(lastMarkerObject).forEach(key => delete lastMarkerObject[key]);
-            Object.keys(allPolylines).forEach(key => delete allPolylines[key]);
-            
-
+                await ensureAdminUser();
+            }
         });
-        
-        await restoreTableFromDB();
-        await restorePointsFromDB();
 
-        // if (testMode) {
-        //     console.log("Starting test mode...");
-        //     startTestMode();
-        // } else {
-        //     try {
-        //         await connectBLEDevice();
-        //     } catch (error) {
-        //         console.error("BLE connection error:", error);
-        //         alert("Не вдалося підключитися до BLE пристрою.");
-        //     }
-        // }
+        await restoreTableFromDB();
+        await ensureAdminUser();
+        await restorePointsFromDB();
     });
 }
 
@@ -266,15 +285,21 @@ function addTableRow(afterRow = null) {
     } else {
         newRow = table.insertRow();
     }
-        
+
     const cellId = newRow.insertCell(0);
     const cellName = newRow.insertCell(1);
     const cellAction = newRow.insertCell(2);
-        
+
+    // Додаємо data-атрибути для адаптивних стилів
+    cellId.setAttribute('data-label', 'ID пристрою');
+    cellName.setAttribute('data-label', 'Ім’я та прізвище');
+    cellAction.setAttribute('data-label', 'Дія');
+
+
     const inputId = document.createElement("input");
     inputId.type = "text";
     inputId.placeholder = "Введіть ID пристрою";
-        
+
     const inputName = document.createElement("input");
     inputName.type = "text";
     inputName.placeholder = "Введіть дані";
@@ -290,7 +315,7 @@ function addTableRow(afterRow = null) {
         const name = inputName.value.trim();
         if (id) saveDeviceToDB(id, name);
     });
-    
+
     const actionSelect = createActionSelect(newRow, inputId);
 
     cellId.appendChild(inputId);
@@ -344,7 +369,23 @@ function createActionSelect(newRow, inputId) {
                 break;
 
             case "delete":
-                table.deleteRow(newRow.rowIndex - 1);
+                if (deviceId === "500001") {
+                    alert("Неможливо видалити адміністратора.");
+                    actionSelect.value = "";
+                    return;
+                }
+                if (deviceId) {
+                    // Видаляємо з IndexedDB
+                    db.devices.delete(deviceId).then(() => {
+                        console.log(`Пристрій ${deviceId} видалено з IndexedDB.`);
+                        table.deleteRow(newRow.rowIndex - 1);
+                    }).catch(error => {
+                        console.error(`Помилка видалення пристрою ${deviceId} з IndexedDB:`, error);
+                    });
+                } else {
+                    // Якщо ID порожній (рядок щойно додали і не заповнили), просто видаляємо рядок
+                    table.deleteRow(newRow.rowIndex - 1);
+                }
                 break;
 
         }
@@ -361,7 +402,7 @@ function isWebBLEavailable() {
     }
     console.log("Bluetooth is available")
     return true
-    
+
 }
 
 function getDeviceInfo() {
@@ -371,8 +412,8 @@ function getDeviceInfo() {
     }
     bluetoothDeviceDetected = null;
     gattCharacteristic = null;
-    
-    
+
+
     let options = {
         acceptAllDevices: true,
         optionalServices: [SERVICE_UUID]
@@ -387,42 +428,49 @@ function getDeviceInfo() {
     })
 }
 
-function read() {
+// --- НОВА ОБ'ЄДНАНА ФУНКЦІЯ ---
+function connectAndStartNotifications() {
     return getDeviceInfo()
-    .then(connectGATT)
-    .then(_ => {
-        console.log("Reading data...")
-        return gattCharacteristic.readValue()
-    })
-    .catch(error => {
-        console.log("Waiting to start reading: " + error)
-    })
+        .then(connectGATT)
+        .then(() => {
+            if (gattCharacteristic) {
+                console.log("Starting notifications...");
+                return gattCharacteristic.startNotifications();
+            } else {
+                throw new Error("GATT Characteristic not found.");
+            }
+        })
+        .then(() => {
+            console.log("Notifications started successfully.");
+        })
+        .catch(error => {
+            console.log("Error during connection and start: " + error);
+        });
 }
+// --- КІНЕЦЬ НОВОЇ ФУНКЦІЇ ---
 
 function connectGATT() {
-    if (!bluetoothDeviceDetected.gatt) { // Додати перевірку
+    if (!bluetoothDeviceDetected?.gatt) {
         return Promise.reject("GATT server not available");
     }
-    if (bluetoothDeviceDetected.gatt.connect && gattCharacteristic) {
-        return Promise.resolve()
+    if (bluetoothDeviceDetected.gatt.connected && gattCharacteristic) {
+        return Promise.resolve();
     }
 
     return bluetoothDeviceDetected.gatt.connect()
-    .then(server => {
-        console.log("Getting GATT Service...")
-        return server.getPrimaryService(SERVICE_UUID)
-    })
-    .then(service => {
-        console.log("Getting GATT Characteristic...")
-        return service.getCharacteristic(CHARACTERISTIC_UUID)
-    })
-    .then(characteristic => {
-        gattCharacteristic = characteristic
-        gattCharacteristic.addEventListener("characteristicvaluechanged", handleChangedValue)
-
-        document.getElementById("start").disabled = false
-        document.getElementById('stop').disabled = true
-    }) 
+        .then(server => {
+            console.log("Getting GATT Service...");
+            return server.getPrimaryService(SERVICE_UUID);
+        })
+        .then(service => {
+            console.log("Getting GATT Characteristic...");
+            return service.getCharacteristic(CHARACTERISTIC_UUID);
+        })
+        .then(characteristic => {
+            gattCharacteristic = characteristic;
+            gattCharacteristic.addEventListener("characteristicvaluechanged", handleChangedValue);
+            // --- ВИДАЛЕНО маніпуляції з кнопками start/stop ---
+        });
 }
 
 function handleChangedValue(event) {
@@ -433,28 +481,25 @@ function handleChangedValue(event) {
     processBLEBufferedData();
 }
 
+// --- ФУНКЦІЇ START та STOP БІЛЬШЕ НЕ ПОТРІБНІ І МОЖУТЬ БУТИ ВИДАЛЕНІ, АЛЕ МИ ЇХ ЗАЛИШИМО НА ВИПАДОК, ЯКЩО ВОНИ ЗНАДОБЛЯТЬСЯ ---
 function start() {
     gattCharacteristic.startNotifications()
-    .then(_ => {
-        console.log("Start reading...")
-        document.getElementById("start").disabled = true
-        document.getElementById('stop').disabled = false
-    })
-    .catch(error => {
-        console.log("[ERROR] Start: " + error)
-    })
+        .then(_ => {
+            console.log("Start reading...")
+        })
+        .catch(error => {
+            console.log("[ERROR] Start: " + error)
+        })
 }
 
 function stop() {
     gattCharacteristic.stopNotifications()
-    .then(_ => {
-        console.log("Stop reading...")
-        document.getElementById("start").disabled = false
-        document.getElementById('stop').disabled = true
-    })
-    .catch(error => {
-        console.log("[ERROR] Stop: " + error)
-    })
+        .then(_ => {
+            console.log("Stop reading...")
+        })
+        .catch(error => {
+            console.log("[ERROR] Stop: " + error)
+        })
 }
 
 
@@ -478,6 +523,7 @@ function getAllowedDeviceIds() {
     const rows = table.getElementsByTagName("tr");
 
     const allowedIds = new Set();
+    allowedIds.add("500001"); // Завжди дозволяємо адміна
 
     for (let row of rows) {
         const inputId = row.getElementsByTagName("input")[0]?.value.trim();
@@ -496,7 +542,7 @@ function processBLEJsonData(data) {
         data.packet &&
         data.packet.decoded &&
         data.packet.decoded.payload
-     ) {
+    ) {
         const allowedIds = getAllowedDeviceIds();
         const id = data.from.toString();
 
@@ -511,11 +557,8 @@ function processBLEJsonData(data) {
         const battery = payload.battery_level;
         const SOS = (payload.position_flags & 0x02) > 0;
         const currentTime = getCurrentTime();
-        
-        if (id == "500001") {
-            mentorId = id;
-            console.log("Визначено ID наставника:", mentorId);
-        }
+
+
         drawNewPoint(x, y, currentTime, SOS, id, battery);
     }
 }
@@ -544,26 +587,6 @@ function getCurrentTime() {
     );
 }
 
-// function callSOS(SOS, time, coords, id) {
-//     const alertElement = document.getElementById("alert");
-
-//     if (SOS) {
-//         console.log(`SOS from ${id} at ${time}`);
-//         alertElement.style.bottom = "15px"; // Показуємо повідомлення
-//         alertElement.innerHTML = `SOS from ${id}!`;
-
-//         if (!alertElement.hasClickListener) {
-//             alertElement.addEventListener("click", () => {
-//                 map.flyTo(coords, maxAllowedZoom);
-//             });
-//             alertElement.hasClickListener = true;
-//         }
-//     } else {
-//         console.log(`SOS deactivated for ${id}`);
-//         alertElement.style.bottom = "-100%"; // Приховуємо повідомлення
-//     }
-// }
-
 const allPolylines = {};
 
 function drawNewPoint(x, y, currentTime, SOS, id, battery) {
@@ -577,14 +600,14 @@ function drawNewPoint(x, y, currentTime, SOS, id, battery) {
 
     var newMarker = L.latLng(roundedX, roundedY);
 
-    const isSpecialId = id === mentorId;
+    const isSpecialId = id === "500001";
     const currentMarkerIcon = isSpecialId
         ? (SOS ? globalBlueAlertIcon : globalBlueMarkerIcon)
         : (SOS ? globalAlertIcon : globalMarkerIcon);
 
     const lineColor = isSpecialId ? "#0000aa" : primeColor;
 
-   
+
 
     if (lastMarkerObject[id] && lastMarker[id]) {
         var markerLine = new L.Polyline([newMarker, lastMarker[id]], {
@@ -603,30 +626,34 @@ function drawNewPoint(x, y, currentTime, SOS, id, battery) {
     var newMarkerObject = L.marker(newMarker, { icon: currentMarkerIcon });
 
     let fullName = "(не вказано)";
-    const tableRows = document.getElementById("devicesTable").getElementsByTagName("tbody")[0].getElementsByTagName("tr");
-
-    for (let row of tableRows) {
-        const inputId = row.getElementsByTagName("input")[0].value.trim();
-        if (inputId === id) {
-            fullName = row.getElementsByTagName("input")[1].value.trim() || fullName;
-            break;
+    if (id === "500001") {
+        fullName = "admin";
+    } else {
+        const tableRows = document.getElementById("devicesTable").getElementsByTagName("tbody")[0].getElementsByTagName("tr");
+        for (let row of tableRows) {
+            const inputId = row.getElementsByTagName("input")[0].value.trim();
+            if (inputId === id) {
+                fullName = row.getElementsByTagName("input")[1].value.trim() || fullName;
+                break;
+            }
         }
     }
-    
+
+
     newMarkerObject.bindPopup(`<b>Friendly-name: </b>${id};<br>
         <b>Ім'я та прізвище: </b>${fullName};<br>
         <b>Координати: </b>${roundedX}, ${roundedY}; <br>
         <b>Заряд акумулятора: </b>${battery}%;<br>
         <b>Час: </b>${currentTime};<br>
-        <button id="popupPathBtn-${id}">Переглянути шлях </button>` );
-    
-    
-        newMarkerObject.on("popupopen", function() {
+        <button id="popupPathBtn-${id}">Переглянути шлях </button>`);
+
+
+    newMarkerObject.on("popupopen", function () {
         const btn = document.getElementById(`popupPathBtn-${id}`);
         if (btn) {
             btn.addEventListener("click", function () {
                 console.log(`popupPathBtn-${id}`);
-        
+
                 const isVisible = allPolylines[id] && allPolylines[id].length > 0 && map.hasLayer(allPolylines[id][0]);
                 Object.entries(allPolylines).forEach(([deviceId, lines]) => {
                     if (Array.isArray(lines)) {
@@ -637,29 +664,17 @@ function drawNewPoint(x, y, currentTime, SOS, id, battery) {
                 });
 
                 if (!isVisible && allPolylines[id]) {
-                allPolylines[id].forEach(line => map.addLayer(line));
+                    allPolylines[id].forEach(line => map.addLayer(line));
                 }
             });
         }
     });
-    //     Object.entries(allPolylines).forEach(([deviceId, line]) => {
-    //         if (hideOthers) {
-    //             if (deviceId != id) map.removeLayer(line);
-    //             else map.addLayer(line);
-    //         } else {
-    //             map.addLayer(line);
-    //         }
-    //     });
-    // });
 
-    // if (isSpecialId) {
-    //     newMarkerObject.on("mousedown", onMentorMarkerClick); // Початок створення зони
-    // }
     newMarkerObject.addTo(map);
 
     lastMarker[id] = newMarker;
     lastMarkerObject[id] = newMarkerObject;
-    
+
     checkDevicePosition(id, roundedX, roundedY); // Передаємо округлені координати
     db.points.add({
         deviceId: id,
@@ -685,17 +700,45 @@ var drawControl = new L.Control.Draw({
     },
     edit: {
         featureGroup: drawnFeatures,
-        remove: false
+        remove: true
     }
 });
 map.addControl(drawControl);
 
 map.on("draw:created", function (e) {
-    var layer = e.layer;
-    drawnFeatures.addLayer(layer)
-    var zonesCoords = layer.getLatLngs()[0].map(coord => [coord.lat, coord.lng]);
-    userPoligonZones.push(zonesCoords);
+    // Перевіряємо, що намальована фігура є саме полігоном,
+    // а не прямокутником для кешування.
+    if (e.layerType === 'polygon') {
+        var layer = e.layer;
+        drawnFeatures.addLayer(layer);
+        var zonesCoords = layer.getLatLngs()[0].map(coord => [coord.lat, coord.lng]);
+        userPoligonZones.push(zonesCoords);
+        console.log("Нову геозону-паркан додано.");
+    }
 });
+
+map.on('draw:deleted', function (e) {
+    e.layers.eachLayer(function (layer) {
+        // Отримати координати видаленого полігону
+        const deletedCoords = layer.getLatLngs()[0].map(coord => [coord.lat, coord.lng]);
+
+        // Знайти індекс цього полігону в масиві userPoligonZones
+        const indexToRemove = userPoligonZones.findIndex(zone => {
+            if (zone.length !== deletedCoords.length) {
+                return false;
+            }
+            // Порівняти кожну пару координат
+            return zone.every((coord, i) => coord[0] === deletedCoords[i][0] && coord[1] === deletedCoords[i][1]);
+        });
+
+        // Якщо знайдено, видалити його
+        if (indexToRemove > -1) {
+            userPoligonZones.splice(indexToRemove, 1);
+            console.log('Геозону-паркан видалено.');
+        }
+    });
+});
+
 
 function isInPolygon(point, polygon) {
     var x = point[0], y = point[1];
@@ -722,15 +765,6 @@ function checkDevicePosition(id, x, y) {
         });
     }
 
-    // Перевірка мобільної геозони наставника (перевіряємо, чи зона створена)
-    // if (id !== mentorId) {
-        // if (!isInMobileZone({ lat: x, lng: y })) {
-        //     alertElement.innerHTML = `${id} has left the mobile zone!`;
-        //     alertElement.style.top = "15px";
-        //     alertElement.style.left = "300px";
-        // }
-    
-
     // Якщо не в жодній зоні та статичні зони існують, показуємо сповіщення
     if (!insideAnyZone && userPoligonZones.length > 0) {
         const alertElement = document.getElementById("alert");
@@ -740,7 +774,7 @@ function checkDevicePosition(id, x, y) {
         setTimeout(() => {
             alertElement.style.top = "-100%";
         }, 3000);
-        
+
     }
 }
 
@@ -772,25 +806,32 @@ function showCacheInstructionAndEnableDrawing() {
 
     map.addControl(drawControlCasche);
 
-    map.once(L.Draw.Event.CREATED, async function (event) {
-        const drawnRectangle = event.layer;
-        const bounds = drawnRectangle.getBounds();
-        cacheBounds = bounds; // Зберігаємо для перегляду!
-        map.removeLayer(drawnRectangle); // Прибираємо прямокутник після малювання
-        map.removeControl(drawControlCasche); // Прибираємо панель малювання
+    const cacheHandler = async function (event) {
+        if (event.layerType === 'rectangle') {
+            const drawnRectangle = event.layer;
+            const bounds = drawnRectangle.getBounds();
+            cacheBounds = bounds; // Зберігаємо для перегляду!
+            map.removeLayer(drawnRectangle); // Прибираємо прямокутник після малювання
+            map.removeControl(drawControlCasche); // Прибираємо панель малювання
 
-        alertElement.style.top = "-100%";
-        
-        await cacheTiles(bounds); // Кешуємо тайли
-
-        alertElement.innerHTML = "Територію закешовано!";
-        alertElement.style.top = "15px";
-        alertElement.style.left = "300px";
-
-        setTimeout(() => {
             alertElement.style.top = "-100%";
-        }, 3000);
-    });
+
+            await cacheTiles(bounds); // Кешуємо тайли
+
+            alertElement.innerHTML = "Територію закешовано!";
+            alertElement.style.top = "15px";
+            alertElement.style.left = "300px";
+
+            setTimeout(() => {
+                alertElement.style.top = "-100%";
+            }, 3000);
+        } else {
+            // Якщо це була інша фігура (полігон), перереєстровуємо слухача
+            map.once(L.Draw.Event.CREATED, cacheHandler);
+        }
+    };
+
+    map.once(L.Draw.Event.CREATED, cacheHandler);
 }
 
 
@@ -861,7 +902,7 @@ async function cacheTiles(bounds) {
     const zoomLevels = [13, 14, 15, 16, 17, 18];
     const tileSize = 256;
     const tileLayerUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-     const urls = getTileUrls(bounds, zoomLevels, tileSize, tileLayerUrl);
+    const urls = getTileUrls(bounds, zoomLevels, tileSize, tileLayerUrl);
 
     console.log(`Кешую ${urls.length} тайлів...`);
 
@@ -899,18 +940,20 @@ function showCachedRectangle() {
 
 async function saveDeviceToDB(id, name) {
     try {
-        await db.devices.put({id, name});
+        await db.devices.put({ id, name });
         console.log(`Saved: ${id} - ${name};`);
     } catch (error) {
         console.error("Error in saving device to DB: ", error);
     }
-    
+
 }
 
 async function restoreTableFromDB() {
     const allDevices = await db.devices.toArray();
     allDevices.forEach(device => {
-        addTableRowFromDB(device.id, device.name);
+        if (device.id !== "500001") {
+            addTableRowFromDB(device.id, device.name);
+        }
     });
 }
 
@@ -922,6 +965,11 @@ function addTableRowFromDB(id = "", name = "") {
     const cellName = newRow.insertCell(1);
     const cellAction = newRow.insertCell(2);
 
+    // Додаємо data-атрибути для адаптивних стилів
+    cellId.setAttribute('data-label', 'ID пристрою');
+    cellName.setAttribute('data-label', 'Ім’я та прізвище');
+    cellAction.setAttribute('data-label', 'Дія');
+
     const inputId = document.createElement("input");
     inputId.type = "text";
     inputId.value = id;
@@ -929,6 +977,7 @@ function addTableRowFromDB(id = "", name = "") {
     const inputName = document.createElement("input");
     inputName.type = "text";
     inputName.value = name;
+
 
     inputId.addEventListener("change", () => {
         const newId = inputId.value.trim();
@@ -946,7 +995,7 @@ function addTableRowFromDB(id = "", name = "") {
 
     cellId.appendChild(inputId);
     cellName.appendChild(inputName);
-    cellAction.appendChild(actionSelect); 
+    cellAction.appendChild(actionSelect);
 }
 
 async function restorePointsFromDB() {
@@ -964,3 +1013,15 @@ async function restorePointsFromDB() {
     }
 }
 
+async function ensureAdminUser() {
+    const adminId = "500001";
+    const adminName = "admin";
+    try {
+        const device = await db.devices.get(adminId);
+        if (!device) {
+            await db.devices.put({ id: adminId, name: adminName });
+        }
+    } catch (error) {
+        console.error("Error ensuring admin user:", error);
+    }
+}

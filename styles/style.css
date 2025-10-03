@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap");
+
 ::-webkit-scrollbar {
   width: 10px;
 }
@@ -24,6 +25,7 @@ body {
   font-weight: 300;
   font-style: normal;
 }
+
 body #portConnectScreen {
   position: fixed;
   top: 0;
@@ -37,6 +39,7 @@ body #portConnectScreen {
   align-items: center;
   transition: all 1000ms ease-in-out;
 }
+
 body #portConnectScreen h1 {
   margin: 0;
   padding: 0;
@@ -46,6 +49,7 @@ body #portConnectScreen h1 {
   max-width: 70%;
   cursor: pointer;
 }
+
 body #osm-map {
   position: absolute;
   top: 0;
@@ -54,10 +58,12 @@ body #osm-map {
   width: 100vw;
   z-index: 0;
 }
+
 body #osm-map .leaflet-bottom,
 body #osm-map .leaflet-right {
   display: none;
 }
+
 body #alert {
   position: fixed;
   right: 15px;
@@ -75,12 +81,207 @@ body #alert {
   color: #FFFFFF;
   cursor: pointer;
   -webkit-user-select: none;
-     -moz-user-select: none;
-          user-select: none;
+  -moz-user-select: none;
+  user-select: none;
   transition: all 250ms ease-in-out;
-}/*# sourceMappingURL=style.css.map */
+}
+
+/*# sourceMappingURL=style.css.map */
 
 #cacheButtons {
   display: none;
 }
 
+button {
+  border: 0;
+  border-radius: 3px;
+  background-color: rgb(16, 181, 222);
+  height: 30px;
+}
+
+#topRightButtons {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1002;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  /* відстань між кнопками */
+}
+
+#deviceTableModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  /* затемнення */
+  display: none;
+  /* спочатку приховане */
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+/* Контейнер таблиці */
+#deviceTableContent {
+  background: #fff;
+  padding: 20px 30px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Анімація появи */
+@keyframes fadeIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Стиль таблиці */
+#devicesTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  font-size: 15px;
+}
+
+#devicesTable thead {
+  background: #10b5de;
+  color: white;
+}
+
+#devicesTable th,
+#devicesTable td {
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+#devicesTable tbody tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+#devicesTable tbody tr:hover {
+  background: #e3f6fb;
+  cursor: pointer;
+}
+
+/* Кнопка закриття */
+#closeTableBtn {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+  background: #aa0000;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#closeTableBtn:hover {
+  background: #cc0000;
+}
+
+/* --- Адаптивні стилі для таблиці --- */
+@media screen and (max-width: 768px) {
+
+  /* Повністю змінюємо модель відображення таблиці */
+  #devicesTable,
+  #devicesTable thead,
+  #devicesTable tbody,
+  #devicesTable th,
+  #devicesTable td,
+  #devicesTable tr {
+    display: block;
+  }
+
+  /* Ховаємо оригінальні заголовки - вони більше не потрібні */
+  #devicesTable thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  #devicesTable tr {
+    border: 1px solid #ccc;
+    margin-bottom: 15px;
+    /* Відступ між "картками" */
+  }
+
+  #devicesTable td {
+    /* Прибираємо стандартні межі і робимо їх схожими на рядки в картці */
+    border: none;
+    border-bottom: 1px solid #eee;
+    position: relative;
+    padding-left: 50%;
+    /* Залишаємо місце для назви поля */
+    text-align: right;
+    /* Вирівнюємо вміст по правому краю */
+  }
+
+  #devicesTable td input,
+  #devicesTable td select {
+    width: 100%;
+    /* Розтягуємо поля вводу на всю ширину */
+    box-sizing: border-box;
+    /* Щоб padding не впливав на ширину */
+  }
+
+  /* Магія! Створюємо псевдо-заголовки з data-атрибутів */
+  #devicesTable td:before {
+    position: absolute;
+    top: 50%;
+    left: 10px;
+    transform: translateY(-50%);
+    width: 45%;
+    padding-right: 10px;
+    white-space: nowrap;
+    content: attr(data-label);
+    /* Беремо текст з атрибута data-label */
+    font-weight: bold;
+    text-align: left;
+    /* Вирівнюємо сам заголовок по лівому краю */
+  }
+
+  #devicesTable td:last-child {
+    border-bottom: 0;
+  }
+}
+
+/* Стилі для контейнера з кнопками керування таблицею */
+.table-actions {
+  margin-top: 20px;
+  /* Відступ зверху від таблиці */
+  display: flex;
+  /* Розташовуємо кнопки в один ряд */
+  gap: 10px;
+  /* Відстань між кнопками */
+}
+
+/* Можна задати колір для кнопок, щоб вони відрізнялися */
+#addDeviceBtn {
+  background-color: #28a745;
+  /* Зелений */
+  color: white;
+}
+
+#deleteDeviceBtn {
+  background-color: #dc3545;
+  /* Червоний */
+  color: white;
+}

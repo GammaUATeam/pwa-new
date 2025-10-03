@@ -23,29 +23,40 @@
 
     <div id="osm-map"></div>
 
-    <button id="showCacheAreaBtn" style="position:absolute; bottom:15px; left:15px; z-index:1000; display: none;">Переглянути закешовану зону</button>
-    <button id="read" style="position:absolute; top:8px; left:40px; z-index:1000; display: none;">Сканувати пристрої</button>
-    <button id="start" style="position:absolute; top:30px; left:40px; z-index:1000; display: none;" disabled>Отримувати дані з пристрою</button>
-    <button id="stop" style="position:absolute; top:50px; left:40px; z-index:1000; display: none;" disabled>Перестати отримувати дані</button>
-  
-    <button id="showTableBtn" style="position:absolute; top:10px; right:71px; z-index:1002; display: none;">Пристрої</button>
-    <button id="addDeviceBtn" style="position:absolute; top:30px; right:43px; z-index:1002; display: none;">Додати рядок</button>
-    <button id="deleteDeviceBtn" style="position:absolute; top:50px; right:27px; z-index:1002; display: none;">Видалити рядок</button>
-    <button id="clearDataBtn" style="position:absolute; bottom:15px; right:44px; z-index:1002; display: none;">Новий похід//Очистити все</button>
+    <button id="showCacheAreaBtn"
+        style="position:absolute; bottom:15px; left:15px; z-index:1000; display: none;">Переглянути закешовану
+        зону</button>
+
+    <button id="connectBtn" style="position:absolute; top:8px; left:40px; z-index:1000; display: none;">Підключити
+        пристрій</button>
+
+    <div id="topRightButtons">
+        <button id="showTableBtn" style="display:none;">Пристрої</button>
+    </div>
+    <button id="clearDataBtn" style="position:absolute; bottom:15px; right:10px; z-index:1002; display: none;">Очистити
+        все</button>
 
     <p id="alert">Тестове сповіщення</p>
 
-    <div id="deviceTableContainer" style="position:absolute; top:95px; right:10px; z-index:1001; display:none; background:white; padding:10px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.3);">
-        <table id="devicesTable" border="1px">
-            <thead>
-                <th>ID пристрою</th>
-                <th>Ім’я та прізвище дитини</th>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
+    <div id="deviceTableModal">
+        <div id="deviceTableContent">
+            <button id="closeTableBtn">← Назад</button>
+            <div class="table-actions">
+                <button id="addDeviceBtn">Додати рядок</button>
+                <!-- <button id="deleteDeviceBtn">Видалити рядок</button> -->
+            </div>
+            <h2>Список пристроїв</h2>
+            <table id="devicesTable">
+                <thead>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+
+
+        </div>
     </div>
-  
+
     <script src="scripts/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
