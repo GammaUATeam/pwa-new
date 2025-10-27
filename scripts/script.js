@@ -269,6 +269,25 @@ function connectDevice() {
                 await ensureAdminUser();
             }
         });
+        // --- НОВИЙ КОД: Логіка для збереження та відновлення стану чекбоксу ---
+        const filterCheckbox = document.getElementById("filterDevicesCheckbox");
+        const savedCheckboxState = localStorage.getItem("checkboxState");
+
+        // 1. Відновлення стану при завантаженні
+        if (savedCheckboxState === "true") {
+            filterCheckbox.checked = true;
+        } else if (savedCheckboxState === "false") {
+            filterCheckbox.checked = false;
+        } else {
+            // Новий стан за замовчуванням (якщо в сховищі нічого немає)
+            filterCheckbox.checked = false;
+        }
+
+        // 2. Збереження стану при зміні
+        filterCheckbox.addEventListener("change", () => {
+            localStorage.setItem("checkboxState", filterCheckbox.checked);
+        });
+        // --- Кінець логіки чекбоксу ---
 
         await restoreTableFromDB();
         await ensureAdminUser();
@@ -543,12 +562,18 @@ function processBLEJsonData(data) {
         data.packet.decoded &&
         data.packet.decoded.payload
     ) {
-        const allowedIds = getAllowedDeviceIds();
         const id = data.from.toString();
 
-        if (!allowedIds.has(id)) {
-            console.warn("Пристрій не у списку дозволених:", id);
-            return;
+        // --- ЗМІНЕНО: Перевірка стану чекбоксу ---
+        const filterCheckbox = document.getElementById("filterDevicesCheckbox");
+        const filterEnabled = filterCheckbox.checked;
+
+        if (filterEnabled) {
+            const allowedIds = getAllowedDeviceIds();
+            if (!allowedIds.has(id)) {
+                console.warn("Пристрій не у списку дозволених (фільтр увімкнено):", id);
+                return; // Фільтруємо, як і раніше
+            }
         }
 
         const payload = data.packet.decoded.payload;
@@ -625,15 +650,19 @@ function drawNewPoint(x, y, currentTime, SOS, id, battery) {
 
     var newMarkerObject = L.marker(newMarker, { icon: currentMarkerIcon });
 
-    let fullName = "(не вказано)";
+    let fullName = id; // За замовчуванням показуємо ID
     if (id === "500001") {
-        fullName = "admin";
+        fullName = "admin"; // Адміна обробляємо окремо
     } else {
         const tableRows = document.getElementById("devicesTable").getElementsByTagName("tbody")[0].getElementsByTagName("tr");
         for (let row of tableRows) {
             const inputId = row.getElementsByTagName("input")[0].value.trim();
             if (inputId === id) {
-                fullName = row.getElementsByTagName("input")[1].value.trim() || fullName;
+                const foundName = row.getElementsByTagName("input")[1].value.trim();
+                if (foundName) {
+                    fullName = foundName; // Якщо ім'я в таблиці є, використовуємо його
+                }
+                // Якщо 'foundName' порожнє, 'fullName' залишиться рівним 'id'
                 break;
             }
         }

@@ -264,13 +264,17 @@ button {
 }
 
 /* Стилі для контейнера з кнопками керування таблицею */
+/* Стилі для контейнера з кнопками керування таблицею */
 .table-actions {
   margin-top: 20px;
   /* Відступ зверху від таблиці */
   display: flex;
   /* Розташовуємо кнопки в один ряд */
-  gap: 10px;
+  gap: 15px;
+  /* Трохи збільшив відступ */
   /* Відстань між кнопками */
+  align-items: center;
+  /* Додано для вертикального вирівнювання */
 }
 
 /* Можна задати колір для кнопок, щоб вони відрізнялися */
@@ -284,4 +288,21 @@ button {
   background-color: #dc3545;
   /* Червоний */
   color: white;
+}
+
+/* Нові стилі для чекбоксу */
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+
+.checkbox-container input {
+  margin-right: 8px;
+  /* Відступ між чекбоксом і текстом */
+  cursor: pointer;
 }
