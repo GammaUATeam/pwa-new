@@ -555,37 +555,49 @@ function getAllowedDeviceIds() {
 }
 
 function processBLEJsonData(data) {
-    if (
+    let id, x, y, battery, SOS;
+    const currentTime = getCurrentTime();
+
+    // Check for NEW format: {"id":"bug","t":3,"type":"POS","lat":498540155,"lon":240541703,"alt":296,"bat":75,"v":3.99}
+    if (data && (data.id || data.id === 0) && data.lat && data.lon) {
+        id = String(data.id);
+        x = data.lat / 1e7;
+        y = data.lon / 1e7;
+        battery = data.bat;
+        SOS = data.type === "SOS"; // Simple check, though sample shows "POS"
+    }
+    // Check for OLD format
+    else if (
         data &&
         data.from &&
         data.packet &&
         data.packet.decoded &&
         data.packet.decoded.payload
     ) {
-        const id = data.from.toString();
-
-        // --- ЗМІНЕНО: Перевірка стану чекбоксу ---
-        const filterCheckbox = document.getElementById("filterDevicesCheckbox");
-        const filterEnabled = filterCheckbox.checked;
-
-        if (filterEnabled) {
-            const allowedIds = getAllowedDeviceIds();
-            if (!allowedIds.has(id)) {
-                console.warn("Пристрій не у списку дозволених (фільтр увімкнено):", id);
-                return; // Фільтруємо, як і раніше
-            }
-        }
-
+        id = data.from.toString();
         const payload = data.packet.decoded.payload;
-        const x = payload.latitude_i / 1e7;
-        const y = payload.longitude_i / 1e7;
-        const battery = payload.battery_level;
-        const SOS = (payload.position_flags & 0x02) > 0;
-        const currentTime = getCurrentTime();
-
-
-        drawNewPoint(x, y, currentTime, SOS, id, battery);
+        x = payload.latitude_i / 1e7;
+        y = payload.longitude_i / 1e7;
+        battery = payload.battery_level;
+        SOS = (payload.position_flags & 0x02) > 0;
+    } else {
+        console.warn("Unknown JSON format:", data);
+        return;
     }
+
+    // --- ЗМІНЕНО: Перевірка стану чекбоксу ---
+    const filterCheckbox = document.getElementById("filterDevicesCheckbox");
+    const filterEnabled = filterCheckbox.checked;
+
+    if (filterEnabled) {
+        const allowedIds = getAllowedDeviceIds();
+        if (!allowedIds.has(id)) {
+            console.warn("Пристрій не у списку дозволених (фільтр увімкнено):", id);
+            return; // Фільтруємо, як і раніше
+        }
+    }
+
+    drawNewPoint(x, y, currentTime, SOS, id, battery);
 }
 
 
